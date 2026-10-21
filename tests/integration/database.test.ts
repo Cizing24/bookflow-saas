@@ -1,6 +1,8 @@
+import { assertLocalDatabase } from "../database-safety";
 import "dotenv/config";
 import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { db } from "@/lib/db";
+assertLocalDatabase();
 const key = "integration-" + Date.now();
 let tenantId: string,
   otherTenantId: string,

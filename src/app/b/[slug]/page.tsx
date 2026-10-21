@@ -15,6 +15,7 @@ export default async function Page({
         name: tenant.name,
         slug: tenant.slug,
         timezone: tenant.timezone,
+        maxAdvanceDays: tenant.maxAdvanceDays,
         services: tenant.services,
         staff: tenant.staff,
       }}

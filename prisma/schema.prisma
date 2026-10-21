@@ -76,17 +76,20 @@ model Verification {
 }
 
 model Tenant {
-  id          String         @id @default(cuid())
-  name        String
-  slug        String         @unique
-  timezone    String         @default("Asia/Taipei")
-  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
-  memberships Membership[]
-  services    Service[]
-  staff       Staff[]
-  customers   Customer[]
-  bookings    Booking[]
-  hours       BusinessHour[]
+  id                  String         @id @default(cuid())
+  name                String
+  slug                String         @unique
+  timezone            String         @default("Asia/Taipei")
+  minNoticeMinutes    Int            @default(0)
+  maxAdvanceDays      Int            @default(90)
+  slotIntervalMinutes Int            @default(30)
+  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
+  memberships         Membership[]
+  services            Service[]
+  staff               Staff[]
+  customers           Customer[]
+  bookings            Booking[]
+  hours               BusinessHour[]
 }
 
 model Membership {
@@ -102,25 +105,32 @@ model Membership {
 }
 
 model Service {
-  id              String    @id @default(cuid())
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  price           Int
-  durationMinutes Int
-  active          Boolean   @default(true)
-  bookings        Booking[]
+  id                  String         @id @default(cuid())
+  tenantId            String
+  tenant              Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  price               Int
+  durationMinutes     Int
+  bufferBeforeMinutes Int            @default(0)
+  bufferAfterMinutes  Int            @default(0)
+  staffServices       StaffService[]
+  active              Boolean        @default(true)
+  bookings            Booking[]
 
   @@unique([tenantId, id])
 }
 
 model Staff {
-  id       String    @id @default(cuid())
-  tenantId String
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name     String
-  active   Boolean   @default(true)
-  bookings Booking[]
+  id             String          @id @default(cuid())
+  tenantId       String
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  active         Boolean         @default(true)
+  bookings       Booking[]
+  customSchedule Boolean         @default(false)
+  schedule       StaffSchedule[]
+  absences       StaffAbsence[]
+  services       StaffService[]
 
   @@unique([tenantId, id])
 }
@@ -139,22 +149,29 @@ model Customer {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  tenantId    String
-  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  serviceId   String
-  service     Service       @relation(fields: [tenantId, serviceId], references: [tenantId, id])
-  staffId     String
-  staff       Staff         @relation(fields: [tenantId, staffId], references: [tenantId, id])
-  customerId  String
-  customer    Customer      @relation(fields: [tenantId, customerId], references: [tenantId, id])
-  startAt     DateTime      @db.Timestamptz(3)
-  endAt       DateTime      @db.Timestamptz(3)
-  status      BookingStatus @default(CONFIRMED)
-  serviceName String
-  price       Int
-  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  id                  String        @id @default(cuid())
+  tenantId            String
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId           String
+  service             Service       @relation(fields: [tenantId, serviceId], references: [tenantId, id])
+  staffId             String
+  staff               Staff         @relation(fields: [tenantId, staffId], references: [tenantId, id])
+  customerId          String
+  customer            Customer      @relation(fields: [tenantId, customerId], references: [tenantId, id])
+  startAt             DateTime      @db.Timestamptz(3)
+  endAt               DateTime      @db.Timestamptz(3)
+  status              BookingStatus @default(CONFIRMED)
+  bufferBeforeMinutes Int           @default(0)
+  bufferAfterMinutes  Int           @default(0)
+  occupiedStartAt     DateTime?     @db.Timestamptz(3)
+  occupiedEndAt       DateTime?     @db.Timestamptz(3)
+  idempotencyKey      String?
+  requestHash         String?
+  serviceName         String
+  price               Int
+  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
 
+  @@unique([tenantId, idempotencyKey])
   @@index([tenantId, startAt])
   @@index([tenantId, staffId, startAt])
 }
@@ -168,4 +185,40 @@ model BusinessHour {
   closeMinute Int
 
   @@unique([tenantId, weekday])
+}
+
+model StaffService {
+  tenantId  String
+  staffId   String
+  serviceId String
+  staff     Staff   @relation(fields: [tenantId, staffId], references: [tenantId, id], onDelete: Cascade)
+  service   Service @relation(fields: [tenantId, serviceId], references: [tenantId, id], onDelete: Cascade)
+
+  @@id([tenantId, staffId, serviceId])
+}
+
+model StaffSchedule {
+  id          String @id @default(cuid())
+  tenantId    String
+  staffId     String
+  staff       Staff  @relation(fields: [tenantId, staffId], references: [tenantId, id], onDelete: Cascade)
+  weekday     Int
+  openMinute  Int
+  closeMinute Int
+  kind        String @default("WORK")
+
+  @@index([tenantId, staffId])
+}
+
+model StaffAbsence {
+  id          String @id @default(cuid())
+  tenantId    String
+  staffId     String
+  staff       Staff  @relation(fields: [tenantId, staffId], references: [tenantId, id], onDelete: Cascade)
+  date        String @db.VarChar(10)
+  openMinute  Int    @default(0)
+  closeMinute Int    @default(1440)
+  reason      String @default("")
+
+  @@index([tenantId, staffId, date])
 }

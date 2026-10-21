@@ -6,6 +6,8 @@ import type {
   serviceSchema,
   staffSchema,
   hoursSchema,
+  scheduleSchema,
+  policySchema,
 } from "@/modules/shared/schemas";
 export const tenantRepository = {
   memberships: (userId: string) =>
@@ -27,7 +29,11 @@ export const tenantRepository = {
   async overview(tenantId: string) {
     const [services, staff, bookings, hours] = await Promise.all([
       db.service.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
-      db.staff.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+      db.staff.findMany({
+        where: { tenantId },
+        orderBy: { name: "asc" },
+        include: { schedule: true, absences: true, services: true },
+      }),
       db.booking.findMany({
         where: { tenantId },
         include: { customer: true, staff: true },
@@ -46,20 +52,85 @@ export const tenantRepository = {
     data: z.infer<typeof serviceSchema>,
     id?: string,
   ) =>
-    withTenantLock(tenantId, (tx) =>
+    withTenantLock(tenantId, async (tx) =>
       id
         ? tx.service.update({ where: { tenantId_id: { tenantId, id } }, data })
-        : tx.service.create({ data: { ...data, tenantId } }),
+        : tx.service.create({
+            data: {
+              ...data,
+              tenantId,
+              staffServices: {
+                create: (
+                  await tx.staff.findMany({
+                    where: { tenantId },
+                    select: { id: true },
+                  })
+                ).map((s) => ({ staffId: s.id })),
+              },
+            },
+          }),
     ),
   saveStaff: (
     tenantId: string,
     data: z.infer<typeof staffSchema>,
     id?: string,
   ) =>
-    withTenantLock(tenantId, (tx) =>
+    withTenantLock(tenantId, async (tx) =>
       id
         ? tx.staff.update({ where: { tenantId_id: { tenantId, id } }, data })
-        : tx.staff.create({ data: { ...data, tenantId } }),
+        : tx.staff.create({
+            data: {
+              ...data,
+              tenantId,
+              services: {
+                create: (
+                  await tx.service.findMany({
+                    where: { tenantId },
+                    select: { id: true },
+                  })
+                ).map((s) => ({ serviceId: s.id })),
+              },
+            },
+          }),
+    ),
+  savePolicy: (tenantId: string, data: z.infer<typeof policySchema>) =>
+    withTenantLock(tenantId, (tx) =>
+      tx.tenant.update({ where: { id: tenantId }, data }),
+    ),
+  saveSchedule: (tenantId: string, data: z.infer<typeof scheduleSchema>) =>
+    withTenantLock(tenantId, async (tx) => {
+      await tx.staff.findUniqueOrThrow({
+        where: { tenantId_id: { tenantId, id: data.staffId } },
+      });
+      for (const id of data.serviceIds)
+        await tx.service.findUniqueOrThrow({
+          where: { tenantId_id: { tenantId, id } },
+        });
+      await tx.staff.update({
+        where: { tenantId_id: { tenantId, id: data.staffId } },
+        data: { customSchedule: data.customSchedule },
+      });
+      const scope = { tenantId, staffId: data.staffId };
+      await tx.staffSchedule.deleteMany({ where: scope });
+      await tx.staffAbsence.deleteMany({ where: scope });
+      await tx.staffService.deleteMany({ where: scope });
+      await tx.staffSchedule.createMany({
+        data: data.schedule.map((h) => ({ ...scope, ...h })),
+      });
+      await tx.staffAbsence.createMany({
+        data: data.absences.map((h) => ({ ...scope, ...h })),
+      });
+      await tx.staffService.createMany({
+        data: data.serviceIds.map((serviceId) => ({ ...scope, serviceId })),
+      });
+    }),
+  cancelBooking: (tenantId: string, id: string) =>
+    withTenantLock(tenantId, (tx) =>
+      tx.booking.update({
+        where: { id, tenantId },
+        data: { status: "CANCELLED" },
+        select: { id: true, status: true },
+      }),
     ),
   saveHours: (tenantId: string, data: z.infer<typeof hoursSchema>) =>
     withTenantLock(tenantId, async (tx) => {
@@ -73,8 +144,11 @@ async function withTenantLock<T>(
   tenantId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
-  return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
-    return fn(tx);
-  });
+  return db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
+      return fn(tx);
+    },
+    { maxWait: 60000, timeout: 60000 },
+  );
 }

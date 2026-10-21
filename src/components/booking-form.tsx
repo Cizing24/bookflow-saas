@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { CalendarDays, Clock, Check, ArrowRight, MapPin } from "lucide-react";
@@ -18,15 +18,22 @@ type Tenant = {
     durationMinutes: number;
     price: number;
   }[];
-  staff: { id: string; name: string }[];
+  maxAdvanceDays: number;
+  staff: { id: string; name: string; services: { serviceId: string }[] }[];
 };
 export function BookingForm({ tenant }: { tenant: Tenant }) {
   const hydrated = useHydrated();
   const [serviceId, setServiceId] = useState(tenant.services[0]?.id ?? "");
-  const [staffId, setStaffId] = useState(tenant.staff[0]?.id ?? "");
+  const [staffId, setStaffId] = useState(
+    tenant.staff.find((s) =>
+      s.services.some((v) => v.serviceId === tenant.services[0]?.id),
+    )?.id ?? "",
+  );
   const [date, setDate] = useState(
     DateTime.now().setZone(tenant.timezone).plus({ days: 1 }).toISODate()!,
   );
+  const submission = useRef<{ fingerprint: string; key: string } | null>(null);
+  const [dates, setDates] = useState<string[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
   const [startAt, setStartAt] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,8 +46,26 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
     endAt: string;
     serviceName: string;
     price: number;
+    status: "CONFIRMED" | "CANCELLED";
   } | null>(null);
   const service = tenant.services.find((s) => s.id === serviceId);
+  useEffect(() => {
+    if (!serviceId || !staffId) return;
+    let active = true;
+    api<{ dates: string[] }>(
+      `/api/public/${tenant.slug}/dates?` +
+        new URLSearchParams({ serviceId, staffId }),
+    )
+      .then((data) => {
+        if (active) setDates(data.dates);
+      })
+      .catch((e) => {
+        if (active) setError((e as Error).message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [serviceId, staffId, tenant.slug, retry]);
   useEffect(() => {
     if (!serviceId || !staffId || !date) return;
     let active = true;
@@ -74,21 +99,28 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
     setBusy(true);
     setError("");
     const f = new FormData(e.currentTarget);
+    const payload = {
+      serviceId,
+      staffId,
+      startAt,
+      name: f.get("name"),
+      email: f.get("email"),
+      phone: f.get("phone"),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (submission.current?.fingerprint !== fingerprint)
+      submission.current = { fingerprint, key: crypto.randomUUID() };
     try {
       setResult(
         await api("/api/public/" + tenant.slug + "/bookings", "POST", {
-          serviceId,
-          staffId,
-          startAt,
-          name: f.get("name"),
-          email: f.get("email"),
-          phone: f.get("phone"),
+          ...payload,
+          idempotencyKey: submission.current.key,
         }),
       );
     } catch (e) {
       setError((e as Error).message);
-      setStartAt("");
-      setSlots(slots.filter((s) => s !== startAt));
+      // Keep the exact request and key available for a network retry.
+      // The backend revalidates conflicts; explicitly refreshing clears selection.
     } finally {
       setBusy(false);
     }
@@ -119,8 +151,14 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-700">
               <Check size={30} />
             </span>
-            <h2 className="mt-5 text-2xl font-bold">預約成功！</h2>
-            <p className="mt-3 text-slate-500">我們已為你保留這段時間。</p>
+            <h2 className="mt-5 text-2xl font-bold">
+              {result.status === "CANCELLED" ? "預約已取消" : "預約成功！"}
+            </h2>
+            <p className="mt-3 text-slate-500">
+              {result.status === "CANCELLED"
+                ? "店家已取消這筆預約，時段已釋放。你可以另約一次。"
+                : "我們已為你保留這段時間。"}
+            </p>
             <div className="my-7 space-y-3 rounded-xl bg-slate-50 p-5 text-left text-sm">
               <p>服務：{result.serviceName}</p>
               <p>人員：{tenant.staff.find((s) => s.id === staffId)?.name}</p>
@@ -128,11 +166,11 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                 時間：
                 {DateTime.fromISO(result.startAt)
                   .setZone(tenant.timezone)
-                  .toFormat("yyyy/MM/dd HH:mm")}
+                  .toFormat("yyyy/MM/dd HH:mm ZZ")}
                 –
                 {DateTime.fromISO(result.endAt)
                   .setZone(tenant.timezone)
-                  .toFormat("HH:mm")}
+                  .toFormat("HH:mm ZZ")}
               </p>
               <p>費用：NT$ {result.price.toLocaleString()}</p>
               <p className="break-all text-xs text-slate-400">
@@ -145,6 +183,7 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
             </p>
             <Button
               onClick={() => {
+                submission.current = null;
                 setResult(null);
                 setStartAt("");
                 resetSlots();
@@ -175,10 +214,19 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                     <label>
                       服務項目
                       <select
+                        aria-label="服務項目"
                         value={serviceId}
                         onChange={(e) => {
                           resetSlots();
                           setServiceId(e.target.value);
+                          setDates([]);
+                          setStaffId(
+                            tenant.staff.find((s) =>
+                              s.services.some(
+                                (v) => v.serviceId === e.target.value,
+                              ),
+                            )?.id ?? "",
+                          );
                         }}
                       >
                         {tenant.services.map((s) => (
@@ -191,17 +239,25 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                     <label>
                       服務人員
                       <select
+                        aria-label="服務人員"
                         value={staffId}
                         onChange={(e) => {
                           resetSlots();
                           setStaffId(e.target.value);
                         }}
                       >
-                        {tenant.staff.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
+                        {!staffId && (
+                          <option value="">目前沒有可提供此服務的人員</option>
+                        )}
+                        {tenant.staff
+                          .filter((s) =>
+                            s.services.some((v) => v.serviceId === serviceId),
+                          )
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
                       </select>
                     </label>
                   </div>
@@ -217,7 +273,7 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                       min={DateTime.now().setZone(tenant.timezone).toISODate()!}
                       max={DateTime.now()
                         .setZone(tenant.timezone)
-                        .plus({ days: 90 })
+                        .plus({ days: tenant.maxAdvanceDays })
                         .toISODate()!}
                       onChange={(e) => {
                         resetSlots();
@@ -225,8 +281,33 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                       }}
                     />
                   </label>
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-500">
+                      可預約日期（後端即時計算）
+                    </p>
+                    <div className="mt-2 flex max-h-36 flex-wrap gap-2 overflow-auto">
+                      {dates.map((d) => (
+                        <button
+                          type="button"
+                          key={d}
+                          aria-pressed={date === d}
+                          className="rounded border px-3 py-2 text-sm"
+                          onClick={() => {
+                            resetSlots();
+                            setDate(d);
+                          }}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <p className="mt-5 text-xs text-slate-500">可預約時段</p>
-                  {loading ? (
+                  {!staffId ? (
+                    <p className="my-6 text-sm text-slate-500">
+                      目前沒有可提供此服務的人員。
+                    </p>
+                  ) : loading ? (
                     <p role="status" className="py-8 text-sm text-slate-500">
                       正在查詢可用時段…
                     </p>
@@ -247,7 +328,7 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                         >
                           {DateTime.fromISO(s)
                             .setZone(tenant.timezone)
-                            .toFormat("HH:mm")}
+                            .toFormat("HH:mm ZZ")}
                         </button>
                       ))}
                     </div>

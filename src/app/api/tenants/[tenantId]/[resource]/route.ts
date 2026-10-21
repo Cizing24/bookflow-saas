@@ -1,6 +1,13 @@
 import { respond, sameOrigin } from "@/lib/http";
 import { AppError } from "@/modules/shared/errors";
-import { saveService, saveStaff, saveHours } from "@/modules/tenant/service";
+import {
+  saveService,
+  saveStaff,
+  saveHours,
+  saveSchedule,
+  savePolicy,
+  cancelBooking,
+} from "@/modules/tenant/service";
 export async function POST(
   r: Request,
   { params }: { params: Promise<{ tenantId: string; resource: string }> },
@@ -9,6 +16,12 @@ export async function POST(
     sameOrigin(r);
     const { tenantId, resource } = await params;
     const data = await r.json();
+    if (resource === "schedule") {
+      await saveSchedule(tenantId, data);
+      return { ok: true };
+    }
+    if (resource === "policy") return savePolicy(tenantId, data);
+    if (resource === "cancel") return cancelBooking(tenantId, data);
     if (resource === "services") return saveService(tenantId, data);
     if (resource === "staff") return saveStaff(tenantId, data);
     if (resource === "hours") {

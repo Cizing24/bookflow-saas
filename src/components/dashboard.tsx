@@ -15,6 +15,7 @@ import {
   Check,
   Store,
 } from "lucide-react";
+import { SchedulingPanel, type ScheduleStaff } from "./schedule-editor";
 import { DateTime } from "luxon";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/client-api";
@@ -27,14 +28,24 @@ type Service = {
   price: number;
   durationMinutes: number;
   active: boolean;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
 };
 type Staff = { id: string; name: string; active: boolean };
 type Hour = { weekday: number; openMinute: number; closeMinute: number };
 type Data = {
-  tenant: { id: string; name: string; slug: string; timezone: string };
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    timezone: string;
+    minNoticeMinutes: number;
+    maxAdvanceDays: number;
+    slotIntervalMinutes: number;
+  };
   role: string;
   services: Service[];
-  staff: Staff[];
+  staff: (Staff & ScheduleStaff)[];
   hours: Hour[];
   bookings: {
     id: string;
@@ -53,6 +64,7 @@ const tabs = [
   { id: "bookings", label: "預約列表", icon: CalendarClock },
   { id: "services", label: "服務項目", icon: Scissors },
   { id: "staff", label: "服務人員", icon: Users },
+  { id: "schedule", label: "員工排班", icon: CalendarClock },
   { id: "hours", label: "營業時間", icon: Settings },
 ];
 const money = (v: number) =>
@@ -159,6 +171,8 @@ export function Dashboard({
         name: f.get("name"),
         price: Number(f.get("price")),
         durationMinutes: Number(f.get("durationMinutes")),
+        bufferBeforeMinutes: Number(f.get("bufferBeforeMinutes")),
+        bufferAfterMinutes: Number(f.get("bufferAfterMinutes")),
         active: f.get("active") === "on",
       },
       editingService ? "PATCH" : "POST",
@@ -543,6 +557,22 @@ export function Dashboard({
                                           ? "已確認"
                                           : "已取消"}
                                       </span>
+                                      {canManage &&
+                                        b.status === "CONFIRMED" && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            disabled={busy}
+                                            onClick={() =>
+                                              void mutate(
+                                                `/api/tenants/${tenantId}/cancel`,
+                                                { id: b.id },
+                                              )
+                                            }
+                                          >
+                                            取消預約
+                                          </Button>
+                                        )}
                                     </td>
                                   </tr>
                                 ))}
@@ -551,6 +581,16 @@ export function Dashboard({
                           </div>
                         )}
                       </Card>
+                    )}
+                    {tab === "schedule" && (
+                      <SchedulingPanel
+                        key={tenantId}
+                        staff={data.staff}
+                        services={data.services}
+                        tenant={data.tenant}
+                        disabled={busy || !canManage}
+                        save={mutate}
+                      />
                     )}
                     {tab === "services" && (
                       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -649,6 +689,30 @@ export function Dashboard({
                                   required
                                 />
                               </label>
+                              {[
+                                "bufferBeforeMinutes",
+                                "bufferAfterMinutes",
+                              ].map((key, i) => (
+                                <label key={key}>
+                                  {i === 0
+                                    ? "服務前緩衝分鐘"
+                                    : "服務後緩衝分鐘"}
+                                  <Input
+                                    name={key}
+                                    type="number"
+                                    min={0}
+                                    max={240}
+                                    required
+                                    defaultValue={
+                                      editingService?.[
+                                        key as
+                                          | "bufferBeforeMinutes"
+                                          | "bufferAfterMinutes"
+                                      ] ?? 0
+                                    }
+                                  />
+                                </label>
+                              ))}
                               <label className="flex items-center gap-2">
                                 <input
                                   name="active"

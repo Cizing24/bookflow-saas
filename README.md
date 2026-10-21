@@ -2,7 +2,7 @@
 
 **預約，從容有序。** 多租戶預約管理 SaaS，讓店家管理服務、人員與每週營業時間，顧客透過專屬網址直接預約，管理端即時看到真實資料。
 
-Phase 1 使用完整資料庫與 Session；預約衝突由 PostgreSQL 排他約束保護，包含併發請求。介面為臺灣繁體中文，價格幣別為新臺幣。
+Phase 2 已加入員工排班、休息與請假、服務資格、前後緩衝、預約政策與 DST 排程。預約衝突由 PostgreSQL 排他約束保護，包含 20 請求併發；公開預約使用冪等鍵避免重試重複寫入。介面為臺灣繁體中文，價格幣別為新臺幣。
 
 ## 畫面
 
@@ -38,9 +38,9 @@ npm run dev
 1. 到 /register 註冊帳號（密碼至少 10 字元），會進入 /dashboard。
 2. 建立店家，設定名稱、英文 Slug 與時區。
 3. 在「服務項目」建立名稱、價格與分鐘數。
-4. 在「服務人員」新增人員；需要時調整「營業時間」。
+4. 在「服務人員」新增人員；調整「營業時間」與「員工排班」的服務資格、多段 WORK / BREAK、停班日期及預約政策。未設定專屬班表的人員沿用店家時間，所有員工使用店家時區。
 5. 開啟 /b/你的-slug，選擇服務、人員、日期與時段，填寫姓名、Email、電話。
-6. 取得預約成功畫面後，回到管理端「預約列表」確認紀錄。
+6. 取得預約成功畫面後，回到管理端「預約列表」確認紀錄；管理者可取消預約，取消後釋放包含緩衝的時段。
 
 ## 此 Windows 環境沒有 Docker 時
 
@@ -81,6 +81,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:integration
+npm run test:migrations
 npm run build
 npx playwright install chromium
 npm run test:e2e
@@ -88,7 +89,7 @@ npm run format:check
 npm audit --omit=dev
 ```
 
-Integration tests 需要已遷移的 PostgreSQL；E2E 會啟動本機伺服器或重用 3000 port 的 BookFlow。測試使用獨立名稱的 fixture 並清除自己建立的資料，請使用開發或測試資料庫，勿將 DATABASE_URL 指向 Production。Better Auth 限流保持啟用，測試會遵守 X-Retry-After 重試。
+`test:migrations` 需要本機測試帳號有 CREATEDB 權限，僅建立／清除其唯一命名的暫時資料庫。Integration tests 需要已遷移的 PostgreSQL；E2E 會啟動本機伺服器或重用 3000 port 的 BookFlow。測試使用獨立名稱的 fixture 並清除自己建立的資料，請使用開發或測試資料庫，勿將 DATABASE_URL 指向 Production。Better Auth 限流保持啟用，測試會遵守 X-Retry-After 重試。
 
 正式編譯後本機運行：
 
@@ -106,4 +107,6 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 - [後續路線](docs/ROADMAP.md)
 - [開發規則](AGENTS.md)
 
-尚未部署正式環境。完整排程、邀請、通知、取消／改期、訂閱付款屬後續階段；目前尚無公開預約反濫用保護與共享限流，公開營運前需依架構文件加固。
+Windows 的 Turbopack CSS worker 本次出現提前退出，dev / build 明確使用 Next.js 支援的 Webpack。所有 TypeScript 與安全檢查仍保持啟用。
+
+尚未部署正式環境。邀請、通知、改期、完整稽核、訂閱付款屬後續階段；目前尚無公開預約反濫用保護與共享限流，公開營運前需依架構文件加固。

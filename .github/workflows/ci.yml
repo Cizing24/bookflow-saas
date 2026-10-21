@@ -43,6 +43,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
+      - run: npm run test:migrations
       - run: npm run test:integration
       - run: npm audit --omit=dev
       - run: npm run build

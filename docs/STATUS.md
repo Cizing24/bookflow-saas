@@ -1,64 +1,75 @@
-# Phase 1 交接狀態
+# Phase 2 — Scheduling Engine 交接狀態
 
-更新日期：2026-10-21（Asia/Taipei）。Phase 1 MVP 已完成並推送。Windows 本機與 GitHub Linux CI 均通過；未部署 Production。
+更新日期：2026-10-21（Asia/Taipei）。本階段排程、資料庫一致性與完整預約流程已完成本機驗收，未部署 Production。Phase 1 歷史結果完整保留於 [history/PHASE1_STATUS.md](history/PHASE1_STATUS.md)。
 
-## 已實作
+## 本次完成
 
-- Next.js App Router、React、strict TypeScript、Tailwind、shadcn/ui 基礎元件、ESLint / Prettier、精確依賴與 lockfile。
-- Better Auth Email / Password 註冊、登入、登出、資料庫 Session 與認證限流。
-- User、Tenant、Membership、Staff、Service、Customer、Booking、BusinessHour 與認證資料表。
-- OWNER / ADMIN 管理、STAFF 唯讀；集中式授權、scoped queries、複合外鍵的租戶隔離。
-- 店家建立與切換、名稱 / Slug / IANA 時區、服務建立 / 編輯 / 停用、人員建立 / 編輯 / 停用、每週營業時間設定。
-- Dashboard 與最近 200 筆預約列表，含顧客、服務、人員、時間、費用與狀態。
-- /b/[slug] 公開預約：真實後端時段、90 天範圍、匿名聯絡資料、即時結果與編號。
-- 交易中重新驗證服務、人員與營業時間；PostgreSQL 排他約束防止有效預約重疊，衝突回應 409。
-- UTC 儲存與店家時區顯示、服務 / 價格 / 顧客聯絡資訊快照，拒絕任意結束時間與不在格線上的起始時間。
-- Loading / Empty / Error / Success、桌面與手機介面、初始化前表單保護。
-- Docker Compose PostgreSQL、隔離本機 PostgreSQL helper、2 個 Migration、可重跑 Seed、自動測試與 GitHub Actions CI。
+- 沿用第一階段 Repository、認證、多租戶、角色、服務、人員、店家時間、公開預約與管理列表。
+- 員工每週多段 WORK / BREAK，指定日期全日／部分請假、休假、臨時停班；員工服務資格與管理 UI。
+- 店家時區作為所有員工唯一時區；UTC 儲存、DST 跳時／秋季雙 offset、含 offset 的預約確認。
+- 可測試的 Availability Engine：服務分鐘、工作／休息／停班、既有占用、前後緩衝、提前分鐘、最遠天數、格線。
+- 公開頁只展示後端日期與時段；交易鎖內重讀設定與重新驗證；失效時段回應中文 409。
+- PostgreSQL `btree_gist` + `tstzrange(...,'[)')` partial exclusion，緩衝快照與不可偽造的 Trigger 占用端點。零緩衝相鄰合法，取消釋放。
+- 租戶內唯一 Idempotency Key、正規化請求 SHA-256；相同內容重送回傳同筆，不同內容 409，取消重送保留 CANCELLED。
+- 管理者取消介面、公開衝突／無時段／網路重試／成功與已取消狀態。
+- 新增第三個 append-only Migration；既有兩個 Migration 沒有修改；既有服務資格回填與新店 Seed 行為保持相容。
+- README、ARCHITECTURE、ROADMAP、STATUS 與 Linux CI 流程更新，新增乾淨資料庫重建檢查。
 
-## 本機驗證
+## 本機驗證結果
 
-驗證環境：Windows、Node.js 22.23.1、PostgreSQL 18.4 project-local cluster（127.0.0.1:5433）。Compose 固定 PostgreSQL 18.6，符合官方目前支援的修補版；此電腦沒有 Docker CLI，因此本機沒有執行 Compose。
+環境：Windows、Node.js 22.23.1、PostgreSQL 18.4 專案本機 cluster（127.0.0.1:5433）、Prisma 7.10.1。測試未使用 Mock Database。Compose PostgreSQL 18.6 的本機執行邊界與 Phase 1 相同，此電腦未使用 Docker。
 
-| 指令                        | 結果                                                          |
-| --------------------------- | ------------------------------------------------------------- |
-| npm ci                      | 通過，從 lockfile 乾淨安裝                                    |
-| npm run db:migrate          | 2 個 Migration 已成功套用                                     |
-| npm run db:seed（連續兩次） | 通過，沒有重設既有帳號與資料                                  |
-| npm run lint                | 通過                                                          |
-| npm run typecheck           | 通過                                                          |
-| npm test                    | 8 項通過                                                      |
-| npm run test:integration    | 4 項通過                                                      |
-| npm run build               | 通過                                                          |
-| npm run test:e2e            | 正式 Build 模式下 4 項通過：桌面 / 手機完整場景與畫面註冊建店 |
-| npm run format:check        | 通過                                                          |
-| npm audit --omit=dev        | 0 vulnerabilities                                             |
+| 檢查                                                | 實際結果                                                                                                                         |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| npm run db:migrate                                  | 三個 Migration 全部成功套用，前兩個保留原樣                                                                                      |
+| npm run test:migrations                             | 隨機全新 PostgreSQL 資料庫成功套用三個 Migration；讀回四個排程約束、三個新增索引、Trigger 與 btree_gist；清除自身暫時 DB         |
+| Prisma migrate diff                                 | `--from-config-datasource --to-schema prisma/schema.prisma --exit-code`：No difference detected；自訂約束另由 SQL / 整合測試驗證 |
+| npm run lint                                        | 通過                                                                                                                             |
+| npm run typecheck                                   | 通過                                                                                                                             |
+| npm test                                            | 18 項通過（原 8 項＋10 項排程 Domain Tests）                                                                                     |
+| npm run test:integration -- --reporter=verbose      | 15 項通過（原 4 項＋11 項排程真實資料庫測試）                                                                                    |
+| npm run build                                       | 通過，Next.js 正式 Webpack Build，未停用 TypeScript                                                                              |
+| E2E_SERVER_COMMAND='npm run start' npm run test:e2e | 6 項通過，Chromium 桌面／手機各 3 項完整情境                                                                                     |
+| npm run format:check                                | 通過                                                                                                                             |
+| git diff --check                                    | 通過                                                                                                                             |
+| npm audit --omit=dev                                | 0 vulnerabilities                                                                                                                |
 
-E2E 包含：畫面註冊與建立店家、Owner 建立店家與管理服務、人員、匿名成功預約並於管理端讀回、401 / 403 隔離、跨店 ID 修改 404、公開跨店資源拒絕、併發 200 / 409、後端推導結束時間、跨來源拒絕、STAFF 唯讀 / ADMIN 可寫、相同 Email 不改寫舊聯絡人、任意起始時間拒絕、停用服務拒絕、登出後 Session 失效。測試會清除自身 fixture，較早除錯過程留下的同格式合成資料亦已定向清理。docs/images 為正式 Build 下的合成測試資料畫面，已檢視桌面、手機版與公開預約頁。
+測試 fixture 具有唯一租戶與帳號身份，測試後只清除自身合成資料。Database tests 與 E2E 拒絕非 localhost 或名稱含 prod 的資料庫。測試使用的 CREATEDB 權限僅為本機重建驗證，不代表正式 runtime 權限需求。
 
-整合測試繞過應用層直接連 PostgreSQL，驗證併發排他、相鄰時段、取消後釋放、跨店外鍵、非法長度與零長預約。pg 8 在併發負面測試會發出單連線 query 的棄用提示；目前固定版本下測試通過，升級 pg 9 前需重新驗證 Prisma adapter。
+## 併發實測數字
 
-## GitHub Linux CI
+| 情境                                                           | 同時請求 |     成功回應／寫入 |                        失敗／衝突 | 最終結果                                 |
+| -------------------------------------------------------------- | -------: | -----------------: | --------------------------------: | ---------------------------------------- |
+| 20 個不同 PostgreSQL backend PID，直接 INSERT 同一員工同一時段 |       20 |                  1 | 19（最新一輪全部 SQLSTATE 23P01） | 1 筆有效預約                             |
+| 直接呼叫 Application Service 搶同一時段                        |       20 |                  1 |         19（安全的 AppError 409） | 1 筆有效預約                             |
+| 桌面 E2E，20 個真實 HTTP POST 搶同一時段                       |       20 |      1（HTTP 200） |                    19（HTTP 409） | 1 筆有效預約                             |
+| 手機 E2E，20 個真實 HTTP POST 搶同一時段                       |       20 |      1（HTTP 200） |                    19（HTTP 409） | 1 筆有效預約                             |
+| 相同冪等鍵及相同內容，Application Service 並發重送             |       20 |      20 次成功回應 |                                 0 | 同一筆編號，只有 1 筆寫入                |
+| E2E，服務端建單成功後刻意丟棄回應，再從畫面重送                |        2 | 原單成功＋原單讀回 |              首次回應模擬網路中斷 | 相同編號、1 筆有效預約；桌面／手機均通過 |
 
-[BookFlow CI run #2](https://github.com/Cizing24/bookflow-saas/actions/runs/39620764568) 已完成，conclusion = success，驗證 commit 為 3fef350489030b370e15ee758dc7f232731d1171。
+獨立 PostgreSQL 連線測試在第一輪亦曾出現 GiST 併發檢查的 `40P01` 死結回滾，資料庫仍只留下 1 筆。測試明確接受 PostgreSQL 的排他拒絕或死結回滾，並驗證 19 筆全部失敗與最終有效筆數，不把連線或不明錯誤當作正確衝突。應用亦將已辨識的交易衝突安全轉換為 409。最新 DB 統計寫入 Git 忽略的 `.local-db/phase2-concurrency.json`，不含 PII 或憑證。
 
-Ubuntu runner 使用 Node.js 22.23.1 與 PostgreSQL 18.6 容器，實際通過 npm ci、2 個 Migration、Lint、Typecheck、Prettier、8 項單元測試、4 項資料庫整合測試、正式依賴安全掃描、Build 與正式 Build 模式 4 項 E2E。第一輪主要實作 commit 的 CI 也通過。本次後續提交只更新此驗證紀錄，未改動程式碼；docs-only push 依 workflow paths-ignore 不重跑。
+## 測試覆蓋與修正
 
-## 已知限制與後續工作
+- 不同員工同時可約、半開相鄰、取消後重約、緩衝不能偽造或穿越休息。
+- 多段工作與店家時間交集、部分／全日停班、資格取消、過期時間、提前與最遠日期改動後重驗。
+- 同鍵內容不同、取消後重送、跨租戶同鍵獨立、跨店 FK／排班／取消拒絕。
+- 臺北日界、紐約春季不存在時間與秋季兩個不同 UTC 起點；實際寫入重複牆上時間的兩筆相鄰瞬間。
+- E2E 保留第一階段註冊、登入、建店、服務編輯、人員、匿名預約、管理讀回、401／403、跨店 ID、同來源、STAFF 唯讀、ADMIN 可寫、快照與登出撤銷；新增排班編輯、資格、預約政策、休假、衝突、網路遺失回應、取消及 20 HTTP 競爭。
+- 修正排班／公開選單的明確無障礙標籤；E2E 精確定位產品錯誤提示，避免誤讀 Next.js route announcer。畫面認證測試遵守 429 的重試等待，沒有關閉限流。
 
-- 沒有 Production 部署、正式域名、寄信服務、付款、完整排程、取消／改期、邀請管理、CRM 合併或完整稽核。
-- Staff 是提供服務的人員，Membership 是登入權限；人員與帳號綁定、角色邀請 UI 留待 Phase 2。
-- 目前每位人員皆能提供所有上架服務，共用一段店家每日營業時間。秋季 DST 重複時間只提供單一 offset；跨日營業尚未支援。
-- 同店設定與預約寫入採 Tenant row lock，確保一致性，未來大流量需細化鎖定。
-- 認證限流目前僅單程序記憶體；公開營運前需共享限流、可信 Proxy 政策、公開預約反濫用、Email 驗證／密碼復原、備份與隱私資料生命週期。
-- npm audit 全依賴仍有 5 個 high 告警，皆源自開發用 eslint-config-next -> fast-glob -> micromatch -> braces；[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) 官方目前標示沒有 patched version。未以 force 降級 Next 或關閉檢查，正式執行依賴掃描為 0。
-- ESLint 固定 9.39.5，以符合 Next 官方 config 所依賴的 React / a11y plugins peer range；npm 有 EOL 提示。ESLint 10 需等上游 plugins 宣告支援後一併升級，沒有使用 force / legacy-peer-deps 繞過相容性。
-- Docker Compose 在本機尚未執行；GitHub Linux CI 已驗證同版本 PostgreSQL 18.6 service container 與全套流程，但並未直接執行 compose.yaml，保留此驗證邊界。
+## 已知邊界與 Phase 3 接續
+
+- 所有員工使用店家時區；跨日班段須拆成兩天，單筆服務完整占用不可跨午夜。獨立員工時區、跨日連續服務與指定日期加班不在本次需求內。
+- 沿用 Tenant row lock，同店寫入序列化；20 請求驗證正確性，不代表已完成生產容量或大型店家吞吐驗收。
+- 新增人員／服務預設對應當時同店所有資源，管理者可調整；變更排班或緩衝不追溯修改／取消既有 Booking。
+- 冪等鍵隨 Booking 保留，未設清除工作。舊 API 客戶端允許不帶鍵；需重試去重的整合必須保存鍵。前端同頁保留鍵，重新載入後不承諾還原待確認請求。
+- 本機 Turbopack CSS worker 反覆連線前退出；dev / build 改用官方支援的 Webpack，正式 Build 和瀏覽器驗證已通過。
+- pg 8 adapter 仍有單連線 query 棄用提示，沒有影響驗收結果；升級 pg 9 前要重新驗證。開發依賴安全告警的既有背景保留在 Phase 1 歷史，正式依賴本次重掃為 0。
+- Production、通知／outbox、改期、邀請、稽核、付款訂閱、共享限流與反濫用、備份還原及隱私資料生命週期仍待獨立實作／上線驗收。
 
 ## GitHub 交付
 
-已建立並推送 [Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。主要實作 commit 為 [cfd213a59a4c1dcab430403a1cd4a353ad99f88b](https://github.com/Cizing24/bookflow-saas/commit/cfd213a59a4c1dcab430403a1cd4a353ad99f88b)，驗證與範本整理 commit 為 3fef350489030b370e15ee758dc7f232731d1171。沒有使用 force push，.env、資料庫、node_modules 與測試暫存皆未納入 Git。
+Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。本機完成驗證後提交並推送；遠端提交與 CI 結果會在推送後讀回補記，不沿用第一階段 CI 當作本次結果。
 
-## 下一階段接手
-
-先依 README 啟動，閱讀 ARCHITECTURE 與 AGENTS。保留兩個已套用的 Migration 與排他約束；測試只可使用開發或測試資料庫。優先依 ROADMAP 完成排程、取消／改期、通知與共享反濫用，再安排獨立的 Production 上線驗收。
+下一階段先依 README 啟動，閱讀 AGENTS、ARCHITECTURE、ROADMAP 與此狀態。禁止改寫已套用 Migration、移除 exclusion 或用只查 availability 取代 DB 約束；Production 部署仍需明確授權。
