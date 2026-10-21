@@ -51,7 +51,7 @@ E2E 包含：畫面註冊與建立店家、Owner 建立店家與管理服務、�
 
 ## GitHub 交付
 
-已確認 Cizing24 授權並建立 https://github.com/Cizing24/bookflow-saas，尚待最終提交與推送。沒有使用 force push。
+已建立並推送 https://github.com/Cizing24/bookflow-saas，主要實作 commit 為 cfd213a59a4c1dcab430403a1cd4a353ad99f88b。GitHub Linux CI 正在執行，已完成 PostgreSQL 18.6 容器啟動、乾淨安裝與 Migration。沒有使用 force push。
 
 ## 下一階段接手
 
