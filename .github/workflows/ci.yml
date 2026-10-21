@@ -66,9 +66,13 @@ jobs:
       - name: Container readiness and migration smoke
         run: |
           docker run --rm --network host -e DATABASE_URL bookflow-tools:ci npm run db:migrate
-          docker run -d --name bookflow-ci --network host -e PORT=3001 -e DATABASE_URL -e BETTER_AUTH_URL=http://localhost:3001 -e BETTER_AUTH_SECRET bookflow:ci
+          docker run -d --name bookflow-ci --network host --health-interval=2s --health-start-period=1s -e PORT=3001 -e DATABASE_URL -e BETTER_AUTH_URL=http://localhost:3001 -e BETTER_AUTH_SECRET bookflow:ci
           for i in $(seq 1 30); do
-            if curl --fail http://127.0.0.1:3001/health; then exit 0; fi
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' bookflow-ci)" = healthy ]; then
+              curl --fail http://127.0.0.1:3001/health
+              curl --fail http://127.0.0.1:3001/api/auth/get-session
+              exit 0
+            fi
             sleep 2
           done
           docker logs bookflow-ci
