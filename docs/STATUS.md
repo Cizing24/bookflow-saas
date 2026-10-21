@@ -1,6 +1,6 @@
 # Phase 2 — Scheduling Engine 交接狀態
 
-更新日期：2026-10-21（Asia/Taipei）。本階段排程、資料庫一致性與完整預約流程已完成本機驗收，未部署 Production。Phase 1 歷史結果完整保留於 [history/PHASE1_STATUS.md](history/PHASE1_STATUS.md)。
+更新日期：2026-10-21（Asia/Taipei）。本階段排程、資料庫一致性與完整預約流程已完成 Windows 本機與 GitHub Linux CI 驗收，未部署 Production。Phase 1 歷史結果完整保留於 [history/PHASE1_STATUS.md](history/PHASE1_STATUS.md)。
 
 ## 本次完成
 
@@ -65,11 +65,15 @@
 - 新增人員／服務預設對應當時同店所有資源，管理者可調整；變更排班或緩衝不追溯修改／取消既有 Booking。
 - 冪等鍵隨 Booking 保留，未設清除工作。舊 API 客戶端允許不帶鍵；需重試去重的整合必須保存鍵。前端同頁保留鍵，重新載入後不承諾還原待確認請求。
 - 本機 Turbopack CSS worker 反覆連線前退出；dev / build 改用官方支援的 Webpack，正式 Build 和瀏覽器驗證已通過。
-- pg 8 adapter 仍有單連線 query 棄用提示，沒有影響驗收結果；升級 pg 9 前要重新驗證。開發依賴安全告警的既有背景保留在 Phase 1 歷史，正式依賴本次重掃為 0。
+- pg 8 adapter 仍有單連線 query 棄用提示，沒有影響驗收結果；升級 pg 9 前要重新驗證。CI 的 npm ci 仍提示 5 個 high 開發依賴告警；既有來源背景保留在 Phase 1 歷史。正式依賴本機與 CI 重掃皆為 0，沒有強制降級或關閉安全檢查。
 - Production、通知／outbox、改期、邀請、稽核、付款訂閱、共享限流與反濫用、備份還原及隱私資料生命週期仍待獨立實作／上線驗收。
 
 ## GitHub 交付
 
-Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。本機完成驗證後提交並推送；遠端提交與 CI 結果會在推送後讀回補記，不沿用第一階段 CI 當作本次結果。
+Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。主要實作 Commit 為 [9341387297754464e8deb69c41462c1e03a3f877](https://github.com/Cizing24/bookflow-saas/commit/9341387297754464e8deb69c41462c1e03a3f877)，已經使用者明確授權推送至 main，並從 GitHub ref 讀回一致 SHA，未使用 force push。
+
+[BookFlow CI #3](https://github.com/Cizing24/bookflow-saas/actions/runs/39625393968) 已完成，status = completed、conclusion = success，驗證 SHA 即上述實作 Commit。Ubuntu runner 使用 Node.js 22.23.1 與 PostgreSQL 18.6 service container，實際通過 npm ci、三個 Migration、Lint、Typecheck、Prettier、18 項 Domain Tests、乾淨資料庫重建、15 項 Database Integration Tests、正式依賴安全掃描、正式 Webpack Build 與 6 項桌面／手機 E2E。這驗證的是 service container，沒有宣稱直接執行 compose.yaml。
+
+已讀回 Linux job logs：獨立 DB 連線 1 成功／19 筆 23P01、Application Service 1 成功／19 筆 409、冪等 20 回應／1 寫入；桌面及手機 HTTP 各 1 成功／19 衝突。此後補記只變更交接文件，沒有改動已驗證程式；docs-only push 依 workflow paths-ignore 不重跑。
 
 下一階段先依 README 啟動，閱讀 AGENTS、ARCHITECTURE、ROADMAP 與此狀態。禁止改寫已套用 Migration、移除 exclusion 或用只查 availability 取代 DB 約束；Production 部署仍需明確授權。
