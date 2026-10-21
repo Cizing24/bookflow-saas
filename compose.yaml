@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: bookflow
+      POSTGRES_PASSWORD: bookflow_dev
+      POSTGRES_DB: bookflow
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookflow -d bookflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  postgres_data:

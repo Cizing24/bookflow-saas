@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id            String       @id
+  name          String
+  email         String       @unique
+  emailVerified Boolean      @default(false)
+  image         String?
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+  sessions      Session[]
+  accounts      Account[]
+  memberships   Membership[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+}
+
+model Tenant {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  timezone    String         @default("Asia/Taipei")
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  memberships Membership[]
+  services    Service[]
+  staff       Staff[]
+  customers   Customer[]
+  bookings    Booking[]
+  hours       BusinessHour[]
+}
+
+model Membership {
+  id       String @id @default(cuid())
+  tenantId String
+  userId   String
+  role     Role   @default(STAFF)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+}
+
+model Service {
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  price           Int
+  durationMinutes Int
+  active          Boolean   @default(true)
+  bookings        Booking[]
+
+  @@unique([tenantId, id])
+}
+
+model Staff {
+  id       String    @id @default(cuid())
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  active   Boolean   @default(true)
+  bookings Booking[]
+
+  @@unique([tenantId, id])
+}
+
+model Customer {
+  id       String    @id @default(cuid())
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  email    String
+  phone    String
+  bookings Booking[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, email])
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     Service       @relation(fields: [tenantId, serviceId], references: [tenantId, id])
+  staffId     String
+  staff       Staff         @relation(fields: [tenantId, staffId], references: [tenantId, id])
+  customerId  String
+  customer    Customer      @relation(fields: [tenantId, customerId], references: [tenantId, id])
+  startAt     DateTime      @db.Timestamptz(3)
+  endAt       DateTime      @db.Timestamptz(3)
+  status      BookingStatus @default(CONFIRMED)
+  serviceName String
+  price       Int
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, startAt])
+  @@index([tenantId, staffId, startAt])
+}
+
+model BusinessHour {
+  id          String @id @default(cuid())
+  tenantId    String
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  weekday     Int
+  openMinute  Int
+  closeMinute Int
+
+  @@unique([tenantId, weekday])
+}
