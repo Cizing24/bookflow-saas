@@ -1,6 +1,6 @@
 # Phase 1 交接狀態
 
-更新日期：2026-10-21（Asia/Taipei）。交付範圍為本機可執行 MVP，未部署 Production。
+更新日期：2026-10-21（Asia/Taipei）。Phase 1 MVP 已完成並推送。Windows 本機與 GitHub Linux CI 均通過；未部署 Production。
 
 ## 已實作
 
@@ -38,6 +38,12 @@ E2E 包含：畫面註冊與建立店家、Owner 建立店家與管理服務、�
 
 整合測試繞過應用層直接連 PostgreSQL，驗證併發排他、相鄰時段、取消後釋放、跨店外鍵、非法長度與零長預約。pg 8 在併發負面測試會發出單連線 query 的棄用提示；目前固定版本下測試通過，升級 pg 9 前需重新驗證 Prisma adapter。
 
+## GitHub Linux CI
+
+[BookFlow CI run #2](https://github.com/Cizing24/bookflow-saas/actions/runs/39620764568) 已完成，conclusion = success，驗證 commit 為 3fef350489030b370e15ee758dc7f232731d1171。
+
+Ubuntu runner 使用 Node.js 22.23.1 與 PostgreSQL 18.6 容器，實際通過 npm ci、2 個 Migration、Lint、Typecheck、Prettier、8 項單元測試、4 項資料庫整合測試、正式依賴安全掃描、Build 與正式 Build 模式 4 項 E2E。第一輪主要實作 commit 的 CI 也通過。本次後續提交只更新此驗證紀錄，未改動程式碼；docs-only push 依 workflow paths-ignore 不重跑。
+
 ## 已知限制與後續工作
 
 - 沒有 Production 部署、正式域名、寄信服務、付款、完整排程、取消／改期、邀請管理、CRM 合併或完整稽核。
@@ -47,11 +53,11 @@ E2E 包含：畫面註冊與建立店家、Owner 建立店家與管理服務、�
 - 認證限流目前僅單程序記憶體；公開營運前需共享限流、可信 Proxy 政策、公開預約反濫用、Email 驗證／密碼復原、備份與隱私資料生命週期。
 - npm audit 全依賴仍有 5 個 high 告警，皆源自開發用 eslint-config-next -> fast-glob -> micromatch -> braces；[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) 官方目前標示沒有 patched version。未以 force 降級 Next 或關閉檢查，正式執行依賴掃描為 0。
 - ESLint 固定 9.39.5，以符合 Next 官方 config 所依賴的 React / a11y plugins peer range；npm 有 EOL 提示。ESLint 10 需等上游 plugins 宣告支援後一併升級，沒有使用 force / legacy-peer-deps 繞過相容性。
-- Docker Compose 在本機尚未執行；GitHub Linux CI 結果另記於交付紀錄，不能以本機 PostgreSQL 測試代稱 Compose 已通過。
+- Docker Compose 在本機尚未執行；GitHub Linux CI 已驗證同版本 PostgreSQL 18.6 service container 與全套流程，但並未直接執行 compose.yaml，保留此驗證邊界。
 
 ## GitHub 交付
 
-已建立並推送 https://github.com/Cizing24/bookflow-saas，主要實作 commit 為 cfd213a59a4c1dcab430403a1cd4a353ad99f88b。GitHub Linux CI 正在執行，已完成 PostgreSQL 18.6 容器啟動、乾淨安裝與 Migration。沒有使用 force push。
+已建立並推送 [Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。主要實作 commit 為 [cfd213a59a4c1dcab430403a1cd4a353ad99f88b](https://github.com/Cizing24/bookflow-saas/commit/cfd213a59a4c1dcab430403a1cd4a353ad99f88b)，驗證與範本整理 commit 為 3fef350489030b370e15ee758dc7f232731d1171。沒有使用 force push，.env、資料庫、node_modules 與測試暫存皆未納入 Git。
 
 ## 下一階段接手
 
