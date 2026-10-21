@@ -1,6 +1,6 @@
 # Phase 4 — Production Readiness & Portfolio Delivery
 
-更新日期：2026-10-22（Asia/Taipei）。本機工程驗收完成；乾淨 Linux CI／Docker 驗證等待本次提交推送後讀回。沒有取得指定部署平台／正式 Secrets／Production 發布授權，未部署公開 Demo、未寄送正式 Email。
+更新日期：2026-10-22（Asia/Taipei）。本機工程驗收與乾淨 Linux CI／Docker 驗證皆完成。沒有取得指定部署平台／正式 Secrets／Production 發布授權，未部署公開 Demo、未寄送正式 Email。
 
 歷史結果保留於 [Phase 1](history/PHASE1_STATUS.md)、[Phase 2](history/PHASE2_STATUS.md)、[Phase 3](history/PHASE3_STATUS.md)。沒有以過去 CI success 代替本次結果。
 
@@ -31,6 +31,7 @@ Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、N
 | Unit                           | 30 項通過                                                                                                          |
 | Integration                    | 28 項通過                                                                                                          |
 | Prisma schema drift            | No difference detected（自訂 SQL 約束另驗）                                                                        |
+| 公開 bundle 機密檢查           | 本機正式產物 44 個 static 檔案，已知本機 Session Secret 的 literal matches 為 0；未輸出 Secret 值                  |
 | 本機備份還原                   | 成功還原至唯一暫時 DB，比對 7 張核心表數量、GiST 與兩個 trigger，清理自身暫時資料                                  |
 | Production Build               | 通過，TypeScript 保持啟用                                                                                          |
 | Production Server E2E          | 15 項通過：Chromium 桌面、平板與手機各 5 項                                                                        |
@@ -47,10 +48,21 @@ Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、N
 
 最後 UI 整合修正已淘汰的第一階段排班說明；登出若 API 失敗，保留管理畫面並顯示失敗，成功重試才導頁。E2E 模擬 503、驗證 Session 仍有效，再成功登出並確認後續管理 API 401。
 
+## 乾淨 Linux CI 與交付證據
+
+- 分支：`phase4-production-readiness`，Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas/tree/phase4-production-readiness)。
+- 最終程式／測試提交：`6288fe71091788f4b7f34c8b99c998329bab810f`。
+- [GitHub Actions run 39651311159](https://github.com/Cizing24/bookflow-saas/actions/runs/39651311159)：整輪 **success**，job `119400048978`，已讀回全部步驟與完成後日誌。
+- Ubuntu 乾淨 checkout／npm ci、Node 22.23.1、PostgreSQL 18.6；成功套用 6 個 Migration、Seed、schema diff 無差異、Lint／Typecheck／Format、Unit 30、Integration 28、Migration 重建、正式依賴 audit 0、Production Build、Playwright 15。
+- 日誌確認桌面／平板／手機 HTTP race 各為 1 success／19 conflicts，包含最終登出 503 與成功重試回歸。
+- Docker tools/runtime build 皆 success；tools 連線真實 PostgreSQL 執行 migrate，讀回 No pending migrations；runtime 以 PORT=3001 啟動，Docker 自身回報 healthy 後才檢查 `/health` 200 `{"status":"ok"}` 與 `/api/auth/get-session` 200 `null`。沒有 mock DB 或略過動態模組。
+- 首輪容器建置因 tools 階段讀 Prisma config 時缺 DATABASE_URL 而失敗；追加非機密 build-only placeholder 後重跑成功。另讓 healthcheck 隨 PORT 運作並驗證 Docker 自身健康狀態，沒有忽略失敗。
+- 後續文件提交僅回填已完成證據與限制，不變動以上受測程式、依賴或 Workflow。文件路徑由 CI paths-ignore 排除，不將文件提交宣稱為新一輪測試。
+
 ## 尚未完成與已知邊界
 
-- 公開 Production／Demo：尚無部署帳戶、目標 DB／網域與 Secrets 的授權交接；見 DEPLOYMENT。GitHub Push 權限可用，CI 結果將另讀回。
-- Docker：本機沒有 Docker CLI，交由 GitHub runner 實際 Build 與 smoke；沒有把 Dockerfile 存在視為驗證通過。
+- 公開 Production／Demo：尚無指定部署帳戶、目標 DB／網域與 Secrets 的授權交接；見 DEPLOYMENT。GitHub 分支已推送並核對 SHA；本次 CI success 見下方。
+- Docker：本機沒有 Docker CLI；GitHub runner 已實際完成 tools/runtime Build、容器 Migration、Docker healthy 與動態 Session smoke。
 - 正式 Email：未提供 Gateway／寄件網域／授權收件者，不宣稱寄送或投遞成功。worker／告警須由正式平台配置；SENT 僅表示 Provider 接受，Gateway 必須去重。
 - 備份：已提供可操作的備份／隔離還原及回滾流程；正式環境與真實資料量的還原演練、RPO／RTO、PITR 尚無授權環境。
 - 商用帳號／隱私：Email 驗證／復原／邀請、Owner 移轉、Token 撤銷／輪替、資料保留／刪除、訂閱金流不在本次交付範圍。

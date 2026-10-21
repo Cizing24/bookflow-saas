@@ -56,7 +56,7 @@ Better Auth 驗證 Session，HTTPS Origin 使用 Secure cookie、HttpOnly、Same
 
 ## 測試策略與可重現交付
 
-Unit 測 domain/DST／狀態機／provider contract／calendar 分欄與 HTTP 邊界；Integration 用真實 PostgreSQL 驗證 FK、排他、角色、租戶、版本、outbox、平台停用；只有營運服務 Session identity 注入，沒有 mock DB。Playwright 用真實 Better Auth Session 跑 Chromium 桌面、手機與 Production Build。Fixture 唯一命名，只刪自身資料，DB guard 拒絕遠端與 prod 命名資料庫。
+Unit 測 domain/DST／狀態機／provider contract／calendar 分欄與 HTTP 邊界；Integration 用真實 PostgreSQL 驗證 FK、排他、角色、租戶、版本、outbox、平台停用；只有營運服務 Session identity 注入，沒有 mock DB。Playwright 用真實 Better Auth Session 跑 Chromium 桌面、平板、手機與 Production Build。Fixture 唯一命名，只刪自身資料，DB guard 拒絕遠端與 prod 命名資料庫。
 
 CI 的新 PostgreSQL 自動 migrate/seed、重建隨機空 DB、npm ci 及 Docker health smoke，驗證初次安裝與容器契約。部署與備份／還原程序見 [DEPLOYMENT](DEPLOYMENT.md)，實際執行結果見 [STATUS](STATUS.md)。開發相依 audit 與正式相依 audit 分開報告；文件與靜態編譯無法取代 E2E 或正式授權驗證。
 

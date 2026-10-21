@@ -185,6 +185,8 @@ Remove-Item Env:SEED_DEMO_BOOKINGS
 
 2026-10-22 本機實際結果：Lint／Typecheck／Production Build 通過，Unit **30 項**、PostgreSQL Integration **28 項**、正式伺服器 Playwright **15 項**通過；桌面／平板／手機 20 請求搶訂各 **1 成功、19 衝突**，全新 DB 的 6 個 Migration 重建成功。正式依賴 audit 為 0。乾淨 Linux CI 與 Docker 結果及驗證邊界見 [完整測試報告](docs/STATUS.md)。
 
+[最終程式提交的 GitHub CI](https://github.com/Cizing24/bookflow-saas/actions/runs/39651311159) 已 **success**：乾淨安裝、Migration／Seed、全部測試、Docker tools/runtime 建置、容器 Migration、Docker healthy、DB health 與動態 Session smoke 均通過。驗證程式提交為 `6288fe71091788f4b7f34c8b99c998329bab810f`，後續僅補文件證據。本機另外完成合成 Seed 重跑、平台授權 CLI 讀回與隔離資料庫備份還原演練。
+
 ```powershell
 npm run lint
 npm run typecheck
