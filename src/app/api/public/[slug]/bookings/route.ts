@@ -1,4 +1,6 @@
-import { respond, sameOrigin } from "@/lib/http";
+import { z } from "zod";
+import { rateLimit } from "@/modules/operations/rate-limit";
+import { respond, sameOrigin, readJson } from "@/lib/http";
 import { AppError } from "@/modules/shared/errors";
 import { createBooking } from "@/modules/booking/service";
 export async function POST(
@@ -6,8 +8,9 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   return respond(async () => {
+    await rateLimit(r, "public-bookings", 120);
     sameOrigin(r);
-    const body = await r.json();
+    const body = z.record(z.string(), z.unknown()).parse(await readJson(r));
     const key = r.headers.get("Idempotency-Key");
     if (key && body && typeof body === "object") {
       if (body.idempotencyKey && body.idempotencyKey !== key)

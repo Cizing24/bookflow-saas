@@ -329,6 +329,24 @@ test("Owner 管理、匿名預約、多租戶隔離與併發防衝突", async ({
       await post(anonymous, "/api/public/" + tenant.slug + "/bookings", body)
     ).status(),
   ).toBe(400);
+  await page.route(
+    "**/api/auth/sign-out",
+    (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Synthetic sign-out failure" }),
+      }),
+    { times: 1 },
+  );
+  await page.getByRole("button", { name: "登出", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "登出失敗" }),
+  ).toContainText("登出失敗");
+  await expect(page).toHaveURL("/dashboard");
+  expect((await page.request.get("/api/tenants/" + tenant.id)).status()).toBe(
+    200,
+  );
   await page.getByRole("button", { name: "登出", exact: true }).click();
   await expect(page).toHaveURL("/login");
   expect((await page.request.get("/api/tenants/" + tenant.id)).status()).toBe(

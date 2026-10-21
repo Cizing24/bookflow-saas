@@ -1,6 +1,13 @@
 import "dotenv/config";
 import { auth } from "../src/lib/auth";
 import { db } from "../src/lib/db";
+import {
+  availableDates,
+  availableSlots,
+  createBooking,
+} from "../src/modules/booking/service";
+if (process.env.NODE_ENV === "production")
+  throw new Error("Demo seed is restricted to development/test databases.");
 const email = "owner@bookflow.local";
 const password = process.env.SEED_PASSWORD;
 if (!password || password.length < 10)
@@ -50,6 +57,46 @@ if (!existed) {
     ),
     skipDuplicates: true,
   });
+}
+if (process.env.SEED_DEMO_BOOKINGS === "true") {
+  const service = await db.service.findFirstOrThrow({
+    where: { tenantId: tenant.id, active: true },
+  });
+  const staff = await db.staff.findFirstOrThrow({
+    where: {
+      tenantId: tenant.id,
+      active: true,
+      services: { some: { serviceId: service.id } },
+    },
+  });
+  const dates = await availableDates(tenant.slug, service.id, staff.id);
+  for (let i = 0; i < Math.min(3, dates.length); i++) {
+    const slots = await availableSlots(
+      tenant.slug,
+      service.id,
+      staff.id,
+      dates[i],
+    );
+    if (!slots.length) continue;
+    const idempotencyKey = `demo-seed-booking-${i}`;
+    if (
+      await db.booking.findUnique({
+        where: {
+          tenantId_idempotencyKey: { tenantId: tenant.id, idempotencyKey },
+        },
+      })
+    )
+      continue;
+    await createBooking(tenant.slug, {
+      serviceId: service.id,
+      staffId: staff.id,
+      startAt: slots[0],
+      name: `示範顧客 ${i + 1}（合成）`,
+      email: `demo-${i + 1}@example.com`,
+      phone: "0900000000",
+      idempotencyKey,
+    });
+  }
 }
 console.log(
   "Seed ready:",

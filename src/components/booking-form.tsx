@@ -1,4 +1,5 @@
 "use client";
+import { statusLabels } from "./operations-panel";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
@@ -46,7 +47,8 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
     endAt: string;
     serviceName: string;
     price: number;
-    status: "CONFIRMED" | "CANCELLED";
+    status: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+    managementToken?: string;
   } | null>(null);
   const service = tenant.services.find((s) => s.id === serviceId);
   useEffect(() => {
@@ -152,12 +154,14 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
               <Check size={30} />
             </span>
             <h2 className="mt-5 text-2xl font-bold">
-              {result.status === "CANCELLED" ? "預約已取消" : "預約成功！"}
+              {result.status === "CONFIRMED"
+                ? "預約成功！"
+                : "預約" + statusLabels[result.status]}
             </h2>
             <p className="mt-3 text-slate-500">
-              {result.status === "CANCELLED"
-                ? "店家已取消這筆預約，時段已釋放。你可以另約一次。"
-                : "我們已為你保留這段時間。"}
+              {result.status === "CONFIRMED"
+                ? "我們已為你保留這段時間。"
+                : "這筆預約已結束，你可以另約一次。"}
             </p>
             <div className="my-7 space-y-3 rounded-xl bg-slate-50 p-5 text-left text-sm">
               <p>服務：{result.serviceName}</p>
@@ -178,9 +182,16 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
               </p>
             </div>
             <p className="mb-6 text-xs leading-6 text-slate-500">
-              請保存此畫面。如需變更或取消，請直接聯絡店家。本階段尚未提供 Email
-              通知。
+              請保存私人管理連結。通知會排入寄送工作；若未收到信，仍可使用此連結，或聯絡店家。
             </p>
+            {result.managementToken && (
+              <a
+                className="mb-5 block font-semibold text-teal-700 underline"
+                href={"/manage#" + result.managementToken}
+              >
+                管理我的預約
+              </a>
+            )}
             <Button
               onClick={() => {
                 submission.current = null;

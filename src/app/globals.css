@@ -26,6 +26,19 @@
   button:disabled {
     cursor: default;
   }
+  :focus-visible {
+    outline: 3px solid #0f766e;
+    outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
   label {
     display: block;
     font-size: 0.875rem;

@@ -1,3 +1,4 @@
+import { changeBooking } from "@/modules/operations/service";
 import { z } from "zod";
 import { authorize, currentUser } from "@/modules/identity/authorization";
 import {
@@ -22,7 +23,12 @@ export async function overview(tenantId: string) {
   return {
     tenant: member.tenant,
     role: member.role,
-    ...(await tenantRepository.overview(tenantId)),
+    ...(await tenantRepository.overview(
+      tenantId,
+      member.role === "STAFF"
+        ? (member.staffId ?? "__unassigned__")
+        : undefined,
+    )),
   };
 }
 export async function saveService(
@@ -30,28 +36,50 @@ export async function saveService(
   input: unknown,
   id?: string,
 ) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveService(tenantId, serviceSchema.parse(input), id);
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveService(
+    tenantId,
+    serviceSchema.parse(input),
+    id,
+    member.userId,
+  );
 }
 export async function saveStaff(tenantId: string, input: unknown, id?: string) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveStaff(tenantId, staffSchema.parse(input), id);
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveStaff(
+    tenantId,
+    staffSchema.parse(input),
+    id,
+    member.userId,
+  );
 }
 export async function saveHours(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveHours(tenantId, hoursSchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveHours(
+    tenantId,
+    hoursSchema.parse(input),
+    member.userId,
+  );
 }
 
 export async function saveSchedule(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveSchedule(tenantId, scheduleSchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveSchedule(
+    tenantId,
+    scheduleSchema.parse(input),
+    member.userId,
+  );
 }
 export async function savePolicy(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.savePolicy(tenantId, policySchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.savePolicy(
+    tenantId,
+    policySchema.parse(input),
+    member.userId,
+  );
 }
 export async function cancelBooking(tenantId: string, input: unknown) {
   await authorize(tenantId, true);
   const { id } = z.object({ id: z.string().min(1) }).parse(input);
-  return tenantRepository.cancelBooking(tenantId, id);
+  return changeBooking(tenantId, { id, action: "CANCELLED" });
 }

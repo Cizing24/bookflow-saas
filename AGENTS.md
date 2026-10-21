@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Follow strict TypeScript and Modular Monolith boundaries: UI -> HTTP -> application services -> domain / scoped data access. UI and route handlers must not own booking or authorization rules.
 - Every management use case must authorize the server session and Membership. Never trust client tenantId, userId or role; scope business queries and relationships to the authorized tenant.
-- OWNER and ADMIN may manage; STAFF may read its tenant. Preserve and test server and database isolation.
+- OWNER manages settings and members; OWNER and ADMIN manage schedules, services and bookings. STAFF reads and operates only bookings and schedules of its explicitly bound Staff identity. Unbound STAFF has no work data. Preserve and test server and database isolation.
 - Preserve composite foreign keys, checks and the partial booking exclusion constraint. Availability checks alone do not prevent concurrent double booking.
 - Store UTC instants; calculate wall-clock schedules with tenant IANA timezone. Derive end time on the server and snapshot service name / price.
 - Anonymous submissions must not rewrite historical customer contacts. Use parameterized SQL and validated inputs. Never log or commit real credentials, secrets or customer PII; test credentials must be synthetic.

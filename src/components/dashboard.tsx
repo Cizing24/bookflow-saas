@@ -1,6 +1,13 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  CalendarPanel,
+  CustomersPanel,
+  StatisticsPanel,
+  OwnerPanel,
+  statusLabels,
+} from "./operations-panel";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -42,6 +49,8 @@ type Data = {
     minNoticeMinutes: number;
     maxAdvanceDays: number;
     slotIntervalMinutes: number;
+    cancelCutoffMinutes: number;
+    rescheduleCutoffMinutes: number;
   };
   role: string;
   services: Service[];
@@ -61,6 +70,9 @@ type Data = {
 type Membership = { id: string; name: string; role: string };
 const tabs = [
   { id: "overview", label: "總覽", icon: LayoutDashboard },
+  { id: "calendar", label: "專業行事曆", icon: CalendarDays },
+  { id: "customers", label: "顧客管理", icon: Users },
+  { id: "operations", label: "店家與成員", icon: Settings },
   { id: "bookings", label: "預約列表", icon: CalendarClock },
   { id: "services", label: "服務項目", icon: Scissors },
   { id: "staff", label: "服務人員", icon: Users },
@@ -76,9 +88,11 @@ const money = (v: number) =>
 export function Dashboard({
   userName,
   memberships: initial,
+  isPlatformAdmin = false,
 }: {
   userName: string;
   memberships: Membership[];
+  isPlatformAdmin?: boolean;
 }) {
   const router = useRouter();
   const [memberships, setMemberships] = useState(initial);
@@ -215,6 +229,14 @@ export function Dashboard({
             WORKSPACE
           </span>
         </Link>
+        {isPlatformAdmin && (
+          <Link
+            className="mx-5 mb-4 rounded border border-teal-700 p-3 text-teal-100"
+            href="/platform"
+          >
+            平台管理
+          </Link>
+        )}
         <div className="px-5">
           <label className="text-xs text-teal-100/60" htmlFor="tenant-switch">
             目前店家
@@ -249,26 +271,34 @@ export function Dashboard({
           className="flex gap-1 overflow-x-auto p-4 lg:mt-5 lg:flex-col"
           aria-label="管理導覽"
         >
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTab(t.id);
-                setCreating(false);
-                setSuccess("");
-                setError("");
-              }}
-              className={
-                "flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 text-left text-sm " +
-                (tab === t.id && !creating
-                  ? "bg-teal-700 text-white"
-                  : "text-teal-100/70 hover:bg-white/5")
-              }
-            >
-              <t.icon size={18} />
-              {t.label}
-            </button>
-          ))}
+          {tabs
+            .filter(
+              (t) =>
+                !(
+                  data?.role === "STAFF" &&
+                  ["customers", "operations"].includes(t.id)
+                ) && !(data?.role === "ADMIN" && t.id === "operations"),
+            )
+            .map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setTab(t.id);
+                  setCreating(false);
+                  setSuccess("");
+                  setError("");
+                }}
+                className={
+                  "flex shrink-0 items-center gap-3 rounded-lg px-4 py-3 text-left text-sm " +
+                  (tab === t.id && !creating
+                    ? "bg-teal-700 text-white"
+                    : "text-teal-100/70 hover:bg-white/5")
+                }
+              >
+                <t.icon size={18} />
+                {t.label}
+              </button>
+            ))}
         </nav>
         <div className="mt-auto hidden p-5 lg:block">
           <div className="rounded-xl border border-teal-800 bg-white/5 p-4">
@@ -292,10 +322,21 @@ export function Dashboard({
             <Button
               variant="ghost"
               size="sm"
+              disabled={busy}
               onClick={async () => {
-                await authClient.signOut();
-                router.push("/login");
-                router.refresh();
+                setBusy(true);
+                setError("");
+                try {
+                  const result = await authClient.signOut();
+                  if (result.error)
+                    throw new Error("登出失敗，請確認網路後重試。");
+                  router.push("/login");
+                  router.refresh();
+                } catch {
+                  setError("登出失敗，請確認網路後重試。");
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               <LogOut size={15} />
@@ -434,60 +475,16 @@ export function Dashboard({
                 data && (
                   <>
                     {tab === "overview" && (
-                      <>
-                        <div className="grid gap-4 sm:grid-cols-3">
-                          {[
-                            {
-                              label: "有效預約",
-                              value: data.bookings.filter(
-                                (b) => b.status === "CONFIRMED",
-                              ).length,
-                              icon: CalendarClock,
-                            },
-                            {
-                              label: "上架服務",
-                              value: data.services.filter((s) => s.active)
-                                .length,
-                              icon: Scissors,
-                            },
-                            {
-                              label: "服務人員",
-                              value: data.staff.filter((s) => s.active).length,
-                              icon: Users,
-                            },
-                          ].map((x) => (
-                            <Card key={x.label}>
-                              <div className="flex justify-between text-sm text-slate-500">
-                                {x.label}
-                                <x.icon size={18} className="text-teal-600" />
-                              </div>
-                              <p className="mt-5 text-4xl font-semibold">
-                                {x.value}
-                                <span className="ml-2 text-xs font-normal text-slate-400">
-                                  最近資料
-                                </span>
-                              </p>
-                            </Card>
-                          ))}
-                        </div>
-                        <Card className="mt-6 flex flex-wrap items-center justify-between gap-5 border-teal-200 bg-teal-50/50">
-                          <div>
-                            <h2 className="font-semibold">
-                              你的專屬預約入口，已經準備好了
-                            </h2>
-                            <p className="mt-2 text-sm text-slate-500">
-                              新增服務和人員，分享 /b/{data.tenant.slug}{" "}
-                              給顧客。
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            onClick={() => setTab("services")}
-                          >
-                            管理服務 <ArrowUpRight size={15} />
-                          </Button>
-                        </Card>
-                      </>
+                      <StatisticsPanel key={tenantId} tenant={data.tenant} />
+                    )}
+                    {tab === "calendar" && (
+                      <CalendarPanel key={tenantId} tenant={data.tenant} />
+                    )}
+                    {tab === "customers" && data.role !== "STAFF" && (
+                      <CustomersPanel key={tenantId} tenant={data.tenant} />
+                    )}
+                    {tab === "operations" && data.role === "OWNER" && (
+                      <OwnerPanel key={tenantId} tenant={data.tenant} />
                     )}
                     {(tab === "overview" || tab === "bookings") && (
                       <Card className="mt-6 overflow-hidden">
@@ -553,9 +550,7 @@ export function Dashboard({
                                     <td>{money(b.price)}</td>
                                     <td>
                                       <span className="rounded-full bg-teal-50 px-3 py-1 text-xs text-teal-700">
-                                        {b.status === "CONFIRMED"
-                                          ? "已確認"
-                                          : "已取消"}
+                                        {statusLabels[b.status]}
                                       </span>
                                       {canManage &&
                                         b.status === "CONFIRMED" && (
@@ -807,7 +802,7 @@ export function Dashboard({
                                 可接受預約
                               </label>
                               <p className="text-xs leading-6 text-slate-400">
-                                第一階段所有人員共用店家營業時間，並可提供所有上架服務。人員資料與登入帳號分開管理。
+                                新增人員預設沿用店家營業時間；可於「員工排班」調整專屬班表、休息、請假與服務資格。登入帳號須另外綁定。
                               </p>
                               <Button disabled={busy}>
                                 {busy ? "儲存中…" : "儲存人員"}
@@ -830,8 +825,8 @@ export function Dashboard({
                       <Card>
                         <h2 className="text-lg font-bold">每週營業時間</h2>
                         <p className="mt-2 text-sm text-slate-500">
-                          以 {data.tenant.timezone} 當地時間為準，每 30
-                          分鐘開放一個起始時段。
+                          以 {data.tenant.timezone}{" "}
+                          當地時間為準；預約起始間隔依「員工排班」的預約政策設定。
                         </p>
                         <form
                           key={JSON.stringify(data.hours)}

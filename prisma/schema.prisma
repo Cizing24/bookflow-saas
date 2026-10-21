@@ -16,19 +16,22 @@ enum Role {
 enum BookingStatus {
   CONFIRMED
   CANCELLED
+  COMPLETED
+  NO_SHOW
 }
 
 model User {
-  id            String       @id
+  id            String         @id
   name          String
-  email         String       @unique
-  emailVerified Boolean      @default(false)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
   image         String?
-  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
   sessions      Session[]
   accounts      Account[]
   memberships   Membership[]
+  platformAdmin PlatformAdmin?
 }
 
 model Session {
@@ -76,31 +79,37 @@ model Verification {
 }
 
 model Tenant {
-  id                  String         @id @default(cuid())
-  name                String
-  slug                String         @unique
-  timezone            String         @default("Asia/Taipei")
-  minNoticeMinutes    Int            @default(0)
-  maxAdvanceDays      Int            @default(90)
-  slotIntervalMinutes Int            @default(30)
-  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
-  memberships         Membership[]
-  services            Service[]
-  staff               Staff[]
-  customers           Customer[]
-  bookings            Booking[]
-  hours               BusinessHour[]
+  id                      String         @id @default(cuid())
+  name                    String
+  slug                    String         @unique
+  active                  Boolean        @default(true)
+  timezone                String         @default("Asia/Taipei")
+  minNoticeMinutes        Int            @default(0)
+  maxAdvanceDays          Int            @default(90)
+  slotIntervalMinutes     Int            @default(30)
+  cancelCutoffMinutes     Int            @default(1440)
+  rescheduleCutoffMinutes Int            @default(1440)
+  createdAt               DateTime       @default(now()) @db.Timestamptz(3)
+  memberships             Membership[]
+  services                Service[]
+  staff                   Staff[]
+  customers               Customer[]
+  bookings                Booking[]
+  hours                   BusinessHour[]
 }
 
 model Membership {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   tenantId String
   userId   String
-  role     Role   @default(STAFF)
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role    @default(STAFF)
+  staffId  String?
+  staff    Staff?  @relation(fields: [tenantId, staffId], references: [tenantId, id])
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, userId])
+  @@unique([tenantId, staffId])
   @@index([userId])
 }
 
@@ -126,6 +135,7 @@ model Staff {
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name           String
   active         Boolean         @default(true)
+  memberships    Membership[]
   bookings       Booking[]
   customSchedule Boolean         @default(false)
   schedule       StaffSchedule[]
@@ -149,28 +159,33 @@ model Customer {
 }
 
 model Booking {
-  id                  String        @id @default(cuid())
+  id                  String         @id @default(cuid())
   tenantId            String
-  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   serviceId           String
-  service             Service       @relation(fields: [tenantId, serviceId], references: [tenantId, id])
+  service             Service        @relation(fields: [tenantId, serviceId], references: [tenantId, id])
   staffId             String
-  staff               Staff         @relation(fields: [tenantId, staffId], references: [tenantId, id])
+  staff               Staff          @relation(fields: [tenantId, staffId], references: [tenantId, id])
   customerId          String
-  customer            Customer      @relation(fields: [tenantId, customerId], references: [tenantId, id])
-  startAt             DateTime      @db.Timestamptz(3)
-  endAt               DateTime      @db.Timestamptz(3)
-  status              BookingStatus @default(CONFIRMED)
-  bufferBeforeMinutes Int           @default(0)
-  bufferAfterMinutes  Int           @default(0)
-  occupiedStartAt     DateTime?     @db.Timestamptz(3)
-  occupiedEndAt       DateTime?     @db.Timestamptz(3)
+  customer            Customer       @relation(fields: [tenantId, customerId], references: [tenantId, id])
+  startAt             DateTime       @db.Timestamptz(3)
+  endAt               DateTime       @db.Timestamptz(3)
+  status              BookingStatus  @default(CONFIRMED)
+  bufferBeforeMinutes Int            @default(0)
+  bufferAfterMinutes  Int            @default(0)
+  occupiedStartAt     DateTime?      @db.Timestamptz(3)
+  occupiedEndAt       DateTime?      @db.Timestamptz(3)
   idempotencyKey      String?
   requestHash         String?
+  managementTokenHash String?        @unique
+  revision            Int            @default(0)
+  events              BookingEvent[]
+  notifications       Notification[]
   serviceName         String
   price               Int
-  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
+  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
 
+  @@unique([tenantId, id])
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, startAt])
   @@index([tenantId, staffId, startAt])
@@ -221,4 +236,64 @@ model StaffAbsence {
   reason      String @default("")
 
   @@index([tenantId, staffId, date])
+}
+
+model BookingEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  bookingId String
+  booking   Booking  @relation(fields: [tenantId, bookingId], references: [tenantId, id], onDelete: Cascade)
+  actor     String
+  action    String
+  before    Json?
+  after     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, bookingId, createdAt])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  tenantId    String
+  bookingId   String
+  booking     Booking   @relation(fields: [tenantId, bookingId], references: [tenantId, id], onDelete: Cascade)
+  kind        String
+  revision    Int
+  recipient   String
+  subject     String
+  body        String
+  status      String    @default("PENDING")
+  attempts    Int       @default(0)
+  availableAt DateTime  @default(now()) @db.Timestamptz(3)
+  leaseUntil  DateTime? @db.Timestamptz(3)
+  leaseToken  String?
+  lastError   String?
+  sentAt      DateTime? @db.Timestamptz(3)
+
+  @@unique([bookingId, kind, revision])
+  @@index([status, availableAt])
+}
+
+model RateLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime @db.Timestamptz(3)
+}
+
+model PlatformAdmin {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlatformEvent {
+  id        String   @id @default(cuid())
+  actorId   String
+  tenantId  String?
+  action    String
+  reason    String
+  before    Boolean?
+  after     Boolean?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
 }

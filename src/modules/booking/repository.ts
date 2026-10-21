@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { AppError } from "@/modules/shared/errors";
 export const bookingResult = {
   id: true,
   startAt: true,
@@ -10,7 +11,7 @@ export const bookingResult = {
 } as const;
 export async function publicTenant(slug: string) {
   return db.tenant.findUnique({
-    where: { slug },
+    where: { slug, active: true },
     select: {
       id: true,
       name: true,
@@ -32,11 +33,11 @@ export async function publicTenant(slug: string) {
     },
   });
 }
-export function schedulingContext(
+export async function schedulingContext(
   tenantId: string,
   tx: Prisma.TransactionClient = db,
 ) {
-  return tx.tenant.findUniqueOrThrow({
+  const tenant = await tx.tenant.findUniqueOrThrow({
     where: { id: tenantId },
     include: {
       hours: true,
@@ -47,6 +48,8 @@ export function schedulingContext(
       },
     },
   });
+  if (!tenant.active) throw new AppError(403, "店家已停用");
+  return tenant;
 }
 export function listBusy(
   tenantId: string,
@@ -54,6 +57,7 @@ export function listBusy(
   from: Date,
   to: Date,
   tx: Prisma.TransactionClient = db,
+  excludeId?: string,
 ) {
   return tx.booking
     .findMany({
@@ -61,6 +65,7 @@ export function listBusy(
         tenantId,
         staffId,
         status: "CONFIRMED",
+        ...(excludeId ? { id: { not: excludeId } } : {}),
         occupiedStartAt: { lt: to },
         occupiedEndAt: { gt: from },
       },
