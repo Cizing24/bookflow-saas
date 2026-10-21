@@ -118,6 +118,13 @@ Next.js 16.4.2 App Router、React 19.3.1、TypeScript 6.0.3 strict、Prisma 7.10
 
 需求：Node.js 22.12+（建議 22.23.1）、npm、Docker Compose。所有指令在 repository 根目錄執行。
 
+Phase 4 交付位於 `phase4-production-readiness`，保留 main 與前三階段歷史。第一次取得原始碼：
+
+```powershell
+git clone --branch phase4-production-readiness https://github.com/Cizing24/bookflow-saas.git
+cd bookflow-saas
+```
+
 ```powershell
 npm ci
 npm run setup:env
@@ -221,3 +228,5 @@ Windows 的 Turbopack CSS worker 本次出現提前退出，dev / build 明確�
 尚未部署正式環境，也未寄送正式郵件。開發環境設定 EMAIL_PROVIDER=preview 後執行 `npm run notifications:dispatch`，Owner 可查驗 PREVIEWED；正式 Provider、排程 worker、Proxy 與監控依 OPERATIONS／DEPLOYMENT 設定。
 
 目前無訂閱付款、Email 驗證／復原／邀請、Owner 移轉、私人連結輪替或完整隱私刪除生命週期。同店 row lock 簡化一致性，Provider 呼叫期間亦持鎖；20 請求驗證正確性，尚無容量 SLA。行事曆最多 92 天／2000 筆，列表最近 200 筆，顧客每頁 50 筆；大量資料聚合仍有最佳化空間。不是 PostgreSQL RLS；持有原始碼執行／DB 憑證的營運者屬受信任邊界。正式公開商用前須評估這些限制並完成外部部署、郵件與還原演練。
+
+正式依賴 audit 為 0；含開發工具則有 `braces` 未修補公告造成的 5 high 相依項目。registry 尚無發布修補版，未以不相容降版或忽略機制掩蓋；公告與處理邊界見 [STATUS](docs/STATUS.md)。

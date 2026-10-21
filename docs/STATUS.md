@@ -36,12 +36,16 @@ Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、N
 | Production Server E2E          | 15 項通過：Chromium 桌面、平板與手機各 5 項                                                                        |
 | HTTP 併發                      | 桌面／平板／手機每種裝置 20 請求，1 成功／19 衝突，讀回 1 筆有效預約；20 條獨立 DB connection 的既有約束回歸也通過 |
 | 正式相依 npm audit --omit=dev  | 0 vulnerabilities                                                                                                  |
+| 含開發相依 npm audit           | 5 high（同一 braces 公告的相依鏈）；registry latest 3.0.3 仍受影響，尚無修補版                                     |
 | Seed                           | 成功連續執行兩次，示範資料與帳號可重跑且不重設                                                                     |
+| 平台授權 CLI                   | grant／revoke 均成功；讀回合成 Demo 帳號 PlatformAdmin 數量為 0，ADMIN_GRANTED／ADMIN_REVOKED 稽核存在             |
 | format:check／git diff --check | 通過                                                                                                               |
 
 完整 E2E 涵蓋註冊建店、服務／員工／排班、匿名成功預約、管理列表與行事曆、顧客改期／取消、取消釋放／重訂、租戶隔離、Staff 權限、未登入與越權拒絕、遺失 HTTP 回應冪等、平台 Owner 隔離／啟停／稽核／CSRF／Cookie／撤權。資料庫測試另外涵蓋終態、版本競爭、Token 範圍、Outbox 並行與重試。
 
 初輪平台 E2E 對串流 not-found 頁面斷言 HTTP 404 而失敗；Next.js 內附文件確認串流開始後保留 200。修正為同時驗證公開 API 404、瀏覽器 not-found 內容與不存在預約按鈕，再重跑完整矩陣並擴增平板為十五項全數通過，沒有降低 API 授權或隱藏錯誤。受限 sandbox 的 DB socket／Build EPERM 改以允許本機程序的權限完成，沒有移除檢查。
+
+最後 UI 整合修正已淘汰的第一階段排班說明；登出若 API 失敗，保留管理畫面並顯示失敗，成功重試才導頁。E2E 模擬 503、驗證 Session 仍有效，再成功登出並確認後續管理 API 401。
 
 ## 尚未完成與已知邊界
 
@@ -53,3 +57,4 @@ Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、N
 - 容量：同店鎖、Provider 期間持鎖、Outbox／限流資料保留、大量資料聚合仍需容量工程；行事曆 92 天／2000 筆、列表最近 200 筆。20 併發不代表 SLA。
 - 安全邊界：不是 PostgreSQL RLS、不是完整 nonce CSP。Auth body 需 proxy 上限，預設不信任 IP headers。HTTPS Cookie／TLS／HSTS／最小 DB 權限需部署環境再驗。
 - 上游提示：pg 8 adapter 提示未來 pg 9 的 query 排隊棄用；目前測試通過，未因此關閉警告或改用未驗證版本。
+- 開發工具安全：`eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces` 共 5 high，根因為 [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)。本次查詢 registry latest braces=3.0.3、micromatch=4.0.8，公告涵蓋 braces <=3.0.3；沒有可採用的發布修補版。npm audit 建議降至 eslint-config-next 14.2.35，與 Next.js 16 工具鏈不一致，未採用強制降版或隱藏公告。正式 runtime 相依掃描為 0，後續需追蹤上游。

@@ -322,10 +322,21 @@ export function Dashboard({
             <Button
               variant="ghost"
               size="sm"
+              disabled={busy}
               onClick={async () => {
-                await authClient.signOut();
-                router.push("/login");
-                router.refresh();
+                setBusy(true);
+                setError("");
+                try {
+                  const result = await authClient.signOut();
+                  if (result.error)
+                    throw new Error("登出失敗，請確認網路後重試。");
+                  router.push("/login");
+                  router.refresh();
+                } catch {
+                  setError("登出失敗，請確認網路後重試。");
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
               <LogOut size={15} />
@@ -791,7 +802,7 @@ export function Dashboard({
                                 可接受預約
                               </label>
                               <p className="text-xs leading-6 text-slate-400">
-                                第一階段所有人員共用店家營業時間，並可提供所有上架服務。人員資料與登入帳號分開管理。
+                                新增人員預設沿用店家營業時間；可於「員工排班」調整專屬班表、休息、請假與服務資格。登入帳號須另外綁定。
                               </p>
                               <Button disabled={busy}>
                                 {busy ? "儲存中…" : "儲存人員"}
@@ -814,8 +825,8 @@ export function Dashboard({
                       <Card>
                         <h2 className="text-lg font-bold">每週營業時間</h2>
                         <p className="mt-2 text-sm text-slate-500">
-                          以 {data.tenant.timezone} 當地時間為準，每 30
-                          分鐘開放一個起始時段。
+                          以 {data.tenant.timezone}{" "}
+                          當地時間為準；預約起始間隔依「員工排班」的預約政策設定。
                         </p>
                         <form
                           key={JSON.stringify(data.hours)}

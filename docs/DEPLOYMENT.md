@@ -52,7 +52,7 @@ docker compose -f compose.production.yaml --profile worker run --rm worker
 
 Outbox claim 支援多 worker；Provider 必須依 Notification ID 持久化去重。配置 Gateway、寄件網域及授權測試收件者後，另驗證接受／投遞／退信。SENT 僅代表 Provider 接受。沒有真實憑證時保留 PENDING，不能當作寄送成功。
 
-監控 `/health` 503、HTTP 5xx／429 比例、DB 連線數與鎖等待、worker 排程 exit code，以及 PENDING 最舊 availableAt／attempts。服務的非預期錯誤只記固定訊息與 Error 類別；平台啟停及權限授予有 DB 稽核。設定日誌輪替、保留期間與告警路由，避免無限磁碟累積。過期 RateLimit 資料與 Outbox 目前沒有自動清理，需依資料保留政策設計清理工作，不能直接刪除冪等或稽核歷史。
+監控 `/health` 503、HTTP 5xx／429 比例、DB 連線數與鎖等待、worker 排程 exit code，以及 PENDING 最舊 availableAt／attempts。服務的非預期錯誤只記固定訊息與 Error 類別；平台啟停及權限授予有 DB 稽核。設定日誌輪替、保留期間與告警路由，避免無限磁碟累積。派送指令會在完成後清除已過期超過 24 小時的 RateLimit counter；須確保 worker 排程持續執行。Outbox 尚無自動保留期限，需依資料保留政策設計清理工作，不能直接刪除冪等或稽核歷史。
 
 ## 備份與還原演練
 
