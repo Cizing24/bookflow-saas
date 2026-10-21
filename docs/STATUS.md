@@ -1,5 +1,17 @@
 # Phase 4 — Production Readiness & Portfolio Delivery
 
+## 最終整合（2026-10-22）
+
+PR [#1](https://github.com/Cizing24/bookflow-saas/pull/1) 整合 Phase 4 至 main。起始 main 為 `8f3d2b5b93e011f11a54f62e3acc36b06d31e55f`，Phase 3 為 `911dad5`，Phase 4 為 `e87d474deb5c6be853122ba92905c03aa2ea8ca4`；前兩者皆為 Phase 4 ancestor，前四個 Migration 原文保留。起始工作樹乾淨，PR 無衝突，[原 head PR CI](https://github.com/Cizing24/bookflow-saas/actions/runs/39653021045) 全部成功。
+
+本次將 README 下載分支改為 main，補齊 [交付與驗收清單](RELEASE_CHECKLIST.md)。最新 PR head 必須重新通過 CI 才合併，合併後另確認 main push CI；下方 Phase 4 開發證據保留為歷史紀錄，不代表合併後的 SHA。本次不部署 Production、不建立收費資源、不刪除正式資料。
+
+本次整合重新執行的本機結果：`db:generate`／`db:migrate`、`verify`（Lint／Typecheck／Unit 30／Integration 28／空 DB 六個 Migration／Build／Format）、隔離備份還原（七張表與 Booking 保護）、schema diff、Seed 連跑兩次、正式伺服器 Playwright 15 項全部成功。桌面／平板／手機各 20 HTTP 請求均為 1 成功／19 衝突。38 個本機文件連結有效，已知本機 Session Secret 在 125 個受追蹤檔案與 44 個 static 檔案的匹配為 0；此掃描不代表所有可能機密的全面證明。正式依賴 audit 0；完整 audit 仍為既有開發工具 5 high，已重新確認 braces 3.0.3／micromatch 4.0.8／eslint-config-next 16.4.2 尚無相容發布修補版。本機沒有 Docker CLI，Docker 驗證由最新 GitHub CI 執行。
+
+合併後精確 main SHA 以 [PR #1 的 merge commit](https://github.com/Cizing24/bookflow-saas/pull/1) 為準；[main CI 清單](https://github.com/Cizing24/bookflow-saas/actions?query=branch%3Amain+event%3Apush) 必須核對同一 SHA 的成功結果，不能以歷史綠燈取代。此文件在 PR 合併前隨同受測提交納入，以避免合併後再產生未驗證的補記提交。
+
+## Phase 4 開發交付歷史
+
 更新日期：2026-10-22（Asia/Taipei）。本機工程驗收與乾淨 Linux CI／Docker 驗證皆完成。沒有取得指定部署平台／正式 Secrets／Production 發布授權，未部署公開 Demo、未寄送正式 Email。
 
 歷史結果保留於 [Phase 1](history/PHASE1_STATUS.md)、[Phase 2](history/PHASE2_STATUS.md)、[Phase 3](history/PHASE3_STATUS.md)。沒有以過去 CI success 代替本次結果。

@@ -1,5 +1,7 @@
 # BookFlow 架構
 
+最終整合沿用下列架構，不新增商業功能或重寫模組；版本與驗收規則見 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
+
 ## Phase 4 增量
 
 - 新增 `modules/platform`、`/platform` 與 `/api/platform`。獨立 PlatformAdmin 授權，不擴張 Membership Role；平台基本資料投影、25 店／頁、Repeatable Read 統計快照、最近 50 稽核。

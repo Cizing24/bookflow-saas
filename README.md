@@ -118,10 +118,10 @@ Next.js 16.4.2 App Router、React 19.3.1、TypeScript 6.0.3 strict、Prisma 7.10
 
 需求：Node.js 22.12+（建議 22.23.1）、npm、Docker Compose。所有指令在 repository 根目錄執行。
 
-Phase 4 交付位於 `phase4-production-readiness`，保留 main 與前三階段歷史。第一次取得原始碼：
+最終整合版本以 `main` 為交付分支，保留 Phase 1–4 歷史。第一次取得原始碼：
 
 ```powershell
-git clone --branch phase4-production-readiness https://github.com/Cizing24/bookflow-saas.git
+git clone --branch main https://github.com/Cizing24/bookflow-saas.git
 cd bookflow-saas
 ```
 
@@ -220,6 +220,7 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 - [角色權限矩陣](docs/PERMISSIONS.md)
 - [架構與安全邊界](docs/ARCHITECTURE.md)
 - [進度、驗證證據與已知限制](docs/STATUS.md)
+- [最終整合檢查與人工驗收](docs/RELEASE_CHECKLIST.md)
 - [後續路線](docs/ROADMAP.md)
 - [開發規則](AGENTS.md)
 
