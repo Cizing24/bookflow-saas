@@ -1,3 +1,5 @@
+import { newManagementToken, tokenHash } from "@/modules/operations/tokens";
+import { recordEvent, enqueue } from "@/modules/operations/notifications";
 import { createHash } from "node:crypto";
 import { DateTime } from "luxon";
 import type { Prisma } from "@/generated/prisma/client";
@@ -12,13 +14,14 @@ import {
 import { AppError } from "@/modules/shared/errors";
 import { bookingSchema } from "@/modules/shared/schemas";
 type Context = Awaited<ReturnType<typeof schedulingContext>>;
-async function slotsFor(
+export async function slotsFor(
   tenant: Context,
   serviceId: string,
   staffId: string,
   date: string,
   tx?: Prisma.TransactionClient,
   knownBusy?: { startAt: Date; endAt: Date }[],
+  excludeId?: string,
 ) {
   const service = tenant.services.find((s) => s.id === serviceId);
   const staff = tenant.staff.find((s) => s.id === staffId);
@@ -38,6 +41,7 @@ async function slotsFor(
       day.startOf("day").toJSDate(),
       day.plus({ days: 1 }).startOf("day").toJSDate(),
       tx,
+      excludeId,
     ));
   return availability({
     date,
@@ -141,9 +145,11 @@ export async function createBooking(slug: string, input: unknown) {
           phone: data.phone,
         },
       });
-      return tx.booking.create({
+      const managementToken = newManagementToken();
+      const booking = await tx.booking.create({
         data: {
           tenantId: tenant.id,
+          managementTokenHash: tokenHash(managementToken),
           serviceId: service.id,
           staffId: data.staffId,
           customerId: customer.id,
@@ -156,8 +162,19 @@ export async function createBooking(slug: string, input: unknown) {
           idempotencyKey,
           requestHash: idempotencyKey ? hash : null,
         },
-        select: bookingResult,
       });
+      await recordEvent(tx, booking, "CUSTOMER", "CREATED");
+      await enqueue(tx, booking, "CONFIRMED", managementToken);
+      await enqueue(tx, booking, "REMINDER", managementToken);
+      return {
+        id: booking.id,
+        startAt: booking.startAt,
+        endAt: booking.endAt,
+        serviceName: booking.serviceName,
+        price: booking.price,
+        status: booking.status,
+        managementToken,
+      };
     });
   } catch (error) {
     if (error instanceof AppError) throw error;

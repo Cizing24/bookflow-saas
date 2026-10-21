@@ -54,6 +54,7 @@ export function listBusy(
   from: Date,
   to: Date,
   tx: Prisma.TransactionClient = db,
+  excludeId?: string,
 ) {
   return tx.booking
     .findMany({
@@ -61,6 +62,7 @@ export function listBusy(
         tenantId,
         staffId,
         status: "CONFIRMED",
+        ...(excludeId ? { id: { not: excludeId } } : {}),
         occupiedStartAt: { lt: to },
         occupiedEndAt: { gt: from },
       },

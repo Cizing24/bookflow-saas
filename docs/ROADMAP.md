@@ -4,7 +4,7 @@
 
 帳號 Session、多租戶與角色、建立店家、服務與人員管理、每週營業時間、公開預約、預約列表、資料庫排他約束、Migration / Seed 與測試。歷史證據保留於 [Phase 1 交接](history/PHASE1_STATUS.md)。
 
-## Phase 2 — Scheduling Engine（本次交付）
+## Phase 2 — Scheduling Engine（完成）
 
 - 員工每週多段工作與休息、指定日期部分／全日停班、服務資格及管理介面。
 - 店家時區統一政策、UTC 儲存、DST 跳時與重複 offset。
@@ -13,16 +13,24 @@
 - 租戶內冪等鍵、管理者取消與釋放、20 條獨立 PostgreSQL 連線及 20 HTTP 請求併發測試。
 - Domain / Database / E2E 回歸、全新資料庫 Migration 重建；確切結果以 [STATUS](STATUS.md) 為準。
 
-## Phase 3 — SaaS 商業化與營運
+## Phase 3 — Business Operations（本次交付）
 
-開始前先閱讀 STATUS、ARCHITECTURE、AGENTS，保留三個已套用的 Migration 與所有 DB 約束。以下為待拆分需求，未因 Phase 2 排程交付而視為已完成：
+- 完整預約狀態機、改期重驗、版本衝突、稽核、店家與顧客取消、完成與未到場。
+- 真實資料日／週行事曆、員工欄位、篩選、詳情與操作面板、響應式介面。
+- Owner / Admin / Staff 權限矩陣、帳號綁定、Staff 自身資料範圍及租戶隔離。
+- 顧客搜尋、分頁、歷史與次數；完整期間 Dashboard 與店家時區趨勢。
+- 256-bit 私人管理連結、取消／改期截止時間、同來源與共享公開限流。
+- 交易 Outbox、可替換 Email Provider、延遲提醒、並行 claim、重試與本地預覽。
+- 精確測試結果與剩餘邊界以 [STATUS](STATUS.md) 為準，未部署 Production。
 
-1. 訂閱、方案配額、自訂品牌、付款／訂金，需先確認產品需求與資料契約。
-2. 改期與可稽核狀態轉換、Email 通知 / outbox、Email 驗證與密碼復原。
-3. 邀請與角色管理、人員與帳號綁定、預約查詢分頁與報表。
-4. 公開 API / 認證共享限流、可信 Proxy 與反濫用政策；日期計算的快取／容量規劃須保留交易重驗。
-5. 若需要跨日連續服務、各員工獨立時區或例外加班，另外制定政策與驗收；目前是店家時區＋跨日拆班＋停班扣除。
-6. 大流量時評估更細鎖定；必須維持設定一致性、冪等及資料庫 exclusion，不能只靠先查再寫。
+## Phase 4 — 商業化與上線準備
+
+1. 訂閱、方案配額、自訂品牌、付款／訂金：先制定產品需求、資料契約與金流安全驗收。
+2. 實際 Email Provider / Gateway 憑證、寄件網域、真實投遞與退信、冪等去重、部署 worker 排程與告警。
+3. Email 驗證、密碼復原、Email 邀請、Owner 移轉及完整帳號營運流程。
+4. 備份還原、隱私保留／撤銷／刪除、監控、最小 DB 權限與 Production 受控發版。
+5. 高量資料 SQL 聚合／顧客查詢最佳化、Outbox 保留政策、WAF / Proxy 設定及容量評估。若需細化 Tenant lock，必須保留排程一致性、冪等及 DB exclusion。
+6. 跨日連續服務、獨立員工時區或例外加班需另訂政策；目前保留店家時區、跨日拆班與停班扣除契約。
 
 ## 公開 Production 上線前
 

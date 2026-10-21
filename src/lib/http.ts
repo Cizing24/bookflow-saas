@@ -3,7 +3,12 @@ import { ZodError } from "zod";
 import { AppError } from "@/modules/shared/errors";
 export async function respond(fn: () => Promise<unknown>) {
   try {
-    return NextResponse.json(await fn());
+    return NextResponse.json(await fn(), {
+      headers: {
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+      },
+    });
   } catch (error) {
     if (error instanceof SyntaxError)
       return NextResponse.json({ error: "無效的 JSON 請求" }, { status: 400 });
@@ -15,7 +20,13 @@ export async function respond(fn: () => Promise<unknown>) {
     if (error instanceof AppError)
       return NextResponse.json(
         { error: error.message },
-        { status: error.status },
+        {
+          status: error.status,
+          headers: {
+            "Cache-Control": "no-store",
+            ...(error.status === 429 ? { "Retry-After": "60" } : {}),
+          },
+        },
       );
     if (typeof error === "object" && error && "code" in error) {
       if (error.code === "P2002")

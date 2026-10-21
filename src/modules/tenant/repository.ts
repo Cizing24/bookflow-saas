@@ -1,3 +1,4 @@
+import { recordEvent, enqueue } from "@/modules/operations/notifications";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { z } from "zod";
@@ -26,17 +27,29 @@ export const tenantRepository = {
         },
       },
     }),
-  async overview(tenantId: string) {
+  async overview(tenantId: string, staffId?: string) {
     const [services, staff, bookings, hours] = await Promise.all([
       db.service.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
       db.staff.findMany({
-        where: { tenantId },
+        where: { tenantId, ...(staffId ? { id: staffId } : {}) },
         orderBy: { name: "asc" },
         include: { schedule: true, absences: true, services: true },
       }),
       db.booking.findMany({
-        where: { tenantId },
-        include: { customer: true, staff: true },
+        where: { tenantId, ...(staffId ? { staffId } : {}) },
+        select: {
+          id: true,
+          startAt: true,
+          endAt: true,
+          serviceId: true,
+          staffId: true,
+          revision: true,
+          serviceName: true,
+          price: true,
+          status: true,
+          customer: { select: { name: true, email: true, phone: true } },
+          staff: { select: { name: true } },
+        },
         orderBy: { startAt: "desc" },
         take: 200,
       }),
@@ -124,14 +137,22 @@ export const tenantRepository = {
         data: data.serviceIds.map((serviceId) => ({ ...scope, serviceId })),
       });
     }),
+  // Internal trusted repository helper; HTTP cancellation uses the authorized lifecycle service.
   cancelBooking: (tenantId: string, id: string) =>
-    withTenantLock(tenantId, (tx) =>
-      tx.booking.update({
+    withTenantLock(tenantId, async (tx) => {
+      const before = await tx.booking.findUniqueOrThrow({
         where: { id, tenantId },
-        data: { status: "CANCELLED" },
-        select: { id: true, status: true },
-      }),
-    ),
+      });
+      if (before.status === "CANCELLED")
+        return { id: before.id, status: before.status };
+      const after = await tx.booking.update({
+        where: { id, tenantId },
+        data: { status: "CANCELLED", revision: { increment: 1 } },
+      });
+      await recordEvent(tx, after, "SYSTEM", "CANCELLED", before);
+      await enqueue(tx, after, "CANCELLED");
+      return { id: after.id, status: after.status };
+    }),
   saveHours: (tenantId: string, data: z.infer<typeof hoursSchema>) =>
     withTenantLock(tenantId, async (tx) => {
       await tx.businessHour.deleteMany({ where: { tenantId } });

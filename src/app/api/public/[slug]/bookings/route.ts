@@ -1,3 +1,4 @@
+import { rateLimit } from "@/modules/operations/rate-limit";
 import { respond, sameOrigin } from "@/lib/http";
 import { AppError } from "@/modules/shared/errors";
 import { createBooking } from "@/modules/booking/service";
@@ -6,6 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   return respond(async () => {
+    await rateLimit(r, "public-bookings", 120);
     sameOrigin(r);
     const body = await r.json();
     const key = r.headers.get("Idempotency-Key");

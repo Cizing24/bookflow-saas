@@ -2,7 +2,7 @@
 
 **預約，從容有序。** 多租戶預約管理 SaaS，讓店家管理服務、人員與每週營業時間，顧客透過專屬網址直接預約，管理端即時看到真實資料。
 
-Phase 2 已加入員工排班、休息與請假、服務資格、前後緩衝、預約政策與 DST 排程。預約衝突由 PostgreSQL 排他約束保護，包含 20 請求併發；公開預約使用冪等鍵避免重試重複寫入。介面為臺灣繁體中文，價格幣別為新臺幣。
+Phase 3 已加入日／週行事曆、完整預約生命週期與改期稽核、Owner / Admin / Staff 權限、顧客管理、自助管理連結、Outbox 與可設定 Email Provider、共享限流及真實營運 Dashboard。沿用 Phase 2 的員工排班、緩衝與 DST 排程。預約衝突由 PostgreSQL 排他約束保護，包含 20 請求併發；公開預約使用冪等鍵避免重試重複寫入。介面為臺灣繁體中文，價格幣別為新臺幣。
 
 ## 畫面
 
@@ -11,6 +11,10 @@ Phase 2 已加入員工排班、休息與請假、服務資格、前後緩衝、
 ![預約管理端](docs/images/dashboard.png)
 
 ![公開預約流程](docs/images/public-booking.png)
+
+![Phase 3 週行事曆（合成測試資料）](docs/images/calendar-chromium.png)
+
+[手機行事曆驗證畫面](docs/images/calendar-mobile.png)
 
 ## 技術
 
@@ -40,7 +44,7 @@ npm run dev
 3. 在「服務項目」建立名稱、價格與分鐘數。
 4. 在「服務人員」新增人員；調整「營業時間」與「員工排班」的服務資格、多段 WORK / BREAK、停班日期及預約政策。未設定專屬班表的人員沿用店家時間，所有員工使用店家時區。
 5. 開啟 /b/你的-slug，選擇服務、人員、日期與時段，填寫姓名、Email、電話。
-6. 取得預約成功畫面後，回到管理端「預約列表」確認紀錄；管理者可取消預約，取消後釋放包含緩衝的時段。
+6. 取得預約成功畫面後，回到管理端「預約列表」確認紀錄；管理者可取消預約，取消後釋放包含緩衝的時段。使用「專業行事曆」查看詳情及改期／完成／未到場；「店家與成員」管理權限、截止時間與通知預覽。
 
 ## 此 Windows 環境沒有 Docker 時
 
@@ -102,6 +106,8 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 
 ## 專案文件
 
+- [營運操作與 Email Provider 設定](docs/OPERATIONS.md)
+- [角色權限矩陣](docs/PERMISSIONS.md)
 - [架構與安全邊界](docs/ARCHITECTURE.md)
 - [進度、驗證證據與已知限制](docs/STATUS.md)
 - [後續路線](docs/ROADMAP.md)
@@ -109,4 +115,4 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 
 Windows 的 Turbopack CSS worker 本次出現提前退出，dev / build 明確使用 Next.js 支援的 Webpack。所有 TypeScript 與安全檢查仍保持啟用。
 
-尚未部署正式環境。邀請、通知、改期、完整稽核、訂閱付款屬後續階段；目前尚無公開預約反濫用保護與共享限流，公開營運前需依架構文件加固。
+尚未部署正式環境，也未寄送正式郵件。開發環境設定 EMAIL_PROVIDER=preview 後執行 `npm run notifications:dispatch`，Owner 可在通知頁查驗 PREVIEWED，不能視為正式寄送。正式 Provider、排程 worker、Proxy 限流設定與監控請依 OPERATIONS 設定。訂閱付款、Email 邀請、備份還原及隱私資料保留屬 Phase 4／上線工作。

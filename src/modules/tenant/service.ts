@@ -1,3 +1,4 @@
+import { changeBooking } from "@/modules/operations/service";
 import { z } from "zod";
 import { authorize, currentUser } from "@/modules/identity/authorization";
 import {
@@ -22,7 +23,12 @@ export async function overview(tenantId: string) {
   return {
     tenant: member.tenant,
     role: member.role,
-    ...(await tenantRepository.overview(tenantId)),
+    ...(await tenantRepository.overview(
+      tenantId,
+      member.role === "STAFF"
+        ? (member.staffId ?? "__unassigned__")
+        : undefined,
+    )),
   };
 }
 export async function saveService(
@@ -53,5 +59,5 @@ export async function savePolicy(tenantId: string, input: unknown) {
 export async function cancelBooking(tenantId: string, input: unknown) {
   await authorize(tenantId, true);
   const { id } = z.object({ id: z.string().min(1) }).parse(input);
-  return tenantRepository.cancelBooking(tenantId, id);
+  return changeBooking(tenantId, { id, action: "CANCELLED" });
 }

@@ -56,14 +56,22 @@ try {
       `SELECT extname FROM pg_extension WHERE extname = 'btree_gist'`,
     );
     if (
-      migrations.rows[0].count !== 3 ||
+      migrations.rows[0].count !== 4 ||
       indexes.rows.length !== 3 ||
       trigger.rows.length !== 1 ||
       extension.rows.length !== 1
     )
       throw new Error("Incomplete clean migration artifacts");
+    const operations = await clean.query(
+      `SELECT tgname FROM pg_trigger WHERE tgname = 'booking_status_transition' AND NOT tgisinternal`,
+    );
+    const tables = await clean.query(
+      `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename IN ('BookingEvent','Notification','RateLimit')`,
+    );
+    if (operations.rows.length !== 1 || tables.rows.length !== 3)
+      throw new Error("Missing operations artifacts");
     console.info(
-      "Clean PostgreSQL database: 3 migrations, 4 scheduling constraints, 3 indexes, occupied-range trigger and btree_gist verified",
+      "Clean PostgreSQL database: 4 migrations, 4 scheduling constraints, 3 indexes, occupied-range trigger and btree_gist; operations tables and status trigger verified",
     );
   } finally {
     await clean.end();
