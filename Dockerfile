@@ -7,7 +7,7 @@ RUN npm ci
 
 FROM dependencies AS tools
 COPY . .
-RUN npm run db:generate
+RUN DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build npm run db:generate
 # This target runs migrations/workers with runtime Secrets; never during image build.
 
 FROM tools AS build

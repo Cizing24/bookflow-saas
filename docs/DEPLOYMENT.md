@@ -81,4 +81,4 @@ pg_restore --dbname=service=bookflow_restore_drill --no-owner --no-acl --exit-on
 
 ## GitHub Actions
 
-`.github/workflows/ci.yml` 在乾淨 Ubuntu runner 啟動 PostgreSQL service，執行 npm ci、generate、Migration、Seed、Lint、Typecheck、Format、Unit、重建 Migration、Integration、正式依賴 audit、Build、Chromium 桌面／手機 E2E；再 Build Docker tools/runtime 並做容器 Migration 與 `/health` smoke。任一步驟失敗即 job failure；`always()` 僅用於保留 Playwright 診斷 artifact。此 workflow 驗證部署產物，不會自行部署 Production。
+`.github/workflows/ci.yml` 在乾淨 Ubuntu runner 啟動 PostgreSQL service，執行 npm ci、generate、Migration、Seed、Lint、Typecheck、Format、Unit、重建 Migration、Integration、正式依賴 audit、Build、Chromium 桌面／平板／手機 E2E；再 Build Docker tools/runtime 並做容器 Migration 與 `/health` smoke。任一步驟失敗即 job failure；`always()` 僅用於保留 Playwright 診斷 artifact。此 workflow 驗證部署產物，不會自行部署 Production。

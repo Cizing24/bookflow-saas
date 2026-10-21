@@ -38,4 +38,4 @@ Owner 可加入已註冊帳號，設定 ADMIN / STAFF 與同店員工綁定，�
 
 舊 `/cancel` endpoint 保持 OWNER / ADMIN 限制以維持前階段契約；新 `/booking` endpoint 支援 Staff 自身工作與完整狀態機。不存在只靠隱藏按鈕的授權。
 
-驗證：單元測試涵蓋完整狀態轉換矩陣；整合測試只注入 Session identity，使用真實 PostgreSQL Membership、水平／垂直／跨租戶拒絕、綁定及 Outbox；桌面／手機 E2E 使用真正 Better Auth Session、API 401 / 403 與營運操作。DB 超級使用者、應用原始碼執行權限與被竊取的私人 Token 不在租戶 API 的防護範圍內。
+驗證：單元測試涵蓋完整狀態轉換矩陣；整合測試只注入 Session identity，使用真實 PostgreSQL Membership、水平／垂直／跨租戶拒絕、綁定及 Outbox；桌面／平板／手機 E2E 使用真正 Better Auth Session、API 401 / 403 與營運操作。DB 超級使用者、應用原始碼執行權限與被竊取的私人 Token 不在租戶 API 的防護範圍內。

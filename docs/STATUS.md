@@ -6,18 +6,16 @@
 
 ## 本次交付
 
-| 範圍                                                                                                                                          | 交付                                                                                                                                                                                                |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 平台管理                                                                                                                                      | `/platform`、真實 Session、獨立 PlatformAdmin、所有店家 25 筆分頁、啟用／停用、平台統計與最近 50 稽核；離線 CLI 授予／撤銷亦記錄                                                                    |
-| 店家停用                                                                                                                                      | 公開入口與建單／改期拒絕、店家管理拒絕；既有私人連結仍可查看／取消；不刪歷史、不自動取消既有預約                                                                                                    |
-| 交易安全                                                                                                                                      | 與建單共用 Tenant lock、expectedActive 防舊頁面、狀態＋稽核同交易、設定寫入鎖後重驗 Membership                                                                                                      |
-| HTTP 強化                                                                                                                                     | 共享認證限流、精確 Origin、HttpOnly／Lax／HTTPS Secure Cookie、業務 JSON 64 KiB streaming 上限、JSON PATCH null 驗證、錯誤 no-store、基本 CSP／Permissions-Policy                                   |
-| UI                                                                                                                                            | 沿用 Design System、focus-visible／reduced-motion、平台 loading／empty／error／分頁、手機 table 捲動、行事曆詳情聚焦／Escape／返回原事件                                                            |
-| 部署                                                                                                                                          | Prisma schema drift                                                                                                                                                                                 | No difference detected（自訂 SQL 約束另驗） |
-| 本機備份還原                                                                                                                                  | 成功還原至唯一暫時 DB，比對 7 張核心表數量、GiST 與兩個 trigger，清理自身暫時資料                                                                                                                   |
-| Production Build、Docker tools／非 root standalone runtime、容器 health、正式 env 範本、Migration／worker、備份還原／發版／回滾與外部授權交接 |
-| CI                                                                                                                                            | PostgreSQL service、npm ci、Migration／Seed、Lint／Typecheck／Format／Unit／Integration／Migration 重建／audit／Build／Playwright，再 Docker Build／容器 Migration／Health smoke；保留失敗 artifact |
-| 作品文件                                                                                                                                      | README 商業問題／功能／架構／ERD／真實截圖／安裝／部署／限制、TECHNICAL_DEEP_DIVE 面試手冊，更新 ARCHITECTURE／PERMISSIONS／OPERATIONS／ROADMAP                                                     |
+| 範圍      | 交付                                                                                                              |
+| --------- | ----------------------------------------------------------------------------------------------------------------- |
+| 平台管理  | `/platform`、真實 Session、獨立 PlatformAdmin、25 店分頁、啟停、統計、稽核與離線權限 CLI                          |
+| 店家停用  | 公開預約及管理拒絕；既有私人連結可查看／取消，不刪歷史                                                            |
+| 交易安全  | Tenant lock、expectedActive、同交易稽核、設定寫入鎖後 Membership 重驗                                             |
+| HTTP 強化 | 共享認證限流、Origin、安全 Cookie、JSON 64 KiB、null PATCH 驗證、no-store、安全 headers                           |
+| UI        | 一致元件、焦點／reduced-motion、平台狀態／分頁、手機表格捲動、詳情鍵盤操作                                        |
+| 部署      | Production Build、Docker tools/runtime、Health、正式 env、Migration/worker、備份還原／回滾                        |
+| CI        | PostgreSQL、npm ci、Migration/Seed、Lint/Typecheck/Format/Unit/Integration、audit、Build、15 項 E2E、Docker smoke |
+| 作品文件  | README 架構／ERD／真實截圖、TECHNICAL_DEEP_DIVE，更新所有技術交接文件                                             |
 
 第五個 append-only Migration 新增 Tenant.active、PlatformAdmin、PlatformEvent；第六個校正新外鍵 ON UPDATE CASCADE，保留已套用的第五個原文。前四個 Migration 原文、複合 FK、CHECK、GiST exclusion、occupied／終態 trigger 保留。沒有 reset、db push、正式 Migration、Production 發布、合併 main 或 force push。
 

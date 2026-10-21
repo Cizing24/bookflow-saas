@@ -29,7 +29,7 @@
 
 1. 前三階段回歸、平台登入／獨立權限、店家總覽／啟停／平台統計／稽核。
 2. 停用與建單競爭、鎖後權限重驗、共享認證限流、JSON 大小、Session Cookie、CSRF 與安全 headers。
-3. PostgreSQL Migration／Seed 的乾淨 GitHub CI、完整桌面／手機 E2E、20 請求與真實 DB 約束驗證。
+3. PostgreSQL Migration／Seed 的乾淨 GitHub CI、完整桌面／平板／手機 E2E、20 請求與真實 DB 約束驗證。
 4. Production Build、Docker tools/runtime、Health、環境範本、備份還原、部署與回滾操作。
 5. 沿用 Design System，改善焦點與鍵盤／行動裝置、合成 Demo、README 架構圖／ERD／截圖與技術面試 Deep Dive。
 6. Commit／授權 Push、讀回 CI 與確切成果；未取得外部平台／Secrets／Production 授權時保留部署邊界。
