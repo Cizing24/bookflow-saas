@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { AppError } from "@/modules/shared/errors";
 export async function respond(fn: () => Promise<unknown>) {
+  const response = await execute(fn);
+  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Referrer-Policy", "no-referrer");
+  return response;
+}
+async function execute(fn: () => Promise<unknown>) {
   try {
     return NextResponse.json(await fn(), {
       headers: {
@@ -46,6 +52,40 @@ export async function respond(fn: () => Promise<unknown>) {
       { status: 500 },
     );
   }
+}
+export async function readJson(request: Request): Promise<unknown> {
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .startsWith("application/json")
+  )
+    throw new AppError(415, "請使用 JSON 格式");
+  const reader = request.body?.getReader();
+  if (!reader) throw new AppError(400, "缺少請求內容");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 65536) {
+        await reader.cancel();
+        throw new AppError(413, "請求內容過大");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(body));
 }
 export function sameOrigin(request: Request) {
   if (

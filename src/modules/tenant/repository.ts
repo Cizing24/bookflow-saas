@@ -1,5 +1,6 @@
 import { recordEvent, enqueue } from "@/modules/operations/notifications";
 import { db } from "@/lib/db";
+import { AppError } from "@/modules/shared/errors";
 import type { Prisma } from "@/generated/prisma/client";
 import type { z } from "zod";
 import type {
@@ -64,79 +65,104 @@ export const tenantRepository = {
     tenantId: string,
     data: z.infer<typeof serviceSchema>,
     id?: string,
+    actorId?: string,
   ) =>
-    withTenantLock(tenantId, async (tx) =>
-      id
-        ? tx.service.update({ where: { tenantId_id: { tenantId, id } }, data })
-        : tx.service.create({
-            data: {
-              ...data,
-              tenantId,
-              staffServices: {
-                create: (
-                  await tx.staff.findMany({
-                    where: { tenantId },
-                    select: { id: true },
-                  })
-                ).map((s) => ({ staffId: s.id })),
+    withTenantLock(
+      tenantId,
+      async (tx) =>
+        id
+          ? tx.service.update({
+              where: { tenantId_id: { tenantId, id } },
+              data,
+            })
+          : tx.service.create({
+              data: {
+                ...data,
+                tenantId,
+                staffServices: {
+                  create: (
+                    await tx.staff.findMany({
+                      where: { tenantId },
+                      select: { id: true },
+                    })
+                  ).map((s) => ({ staffId: s.id })),
+                },
               },
-            },
-          }),
+            }),
+      actorId,
     ),
   saveStaff: (
     tenantId: string,
     data: z.infer<typeof staffSchema>,
     id?: string,
+    actorId?: string,
   ) =>
-    withTenantLock(tenantId, async (tx) =>
-      id
-        ? tx.staff.update({ where: { tenantId_id: { tenantId, id } }, data })
-        : tx.staff.create({
-            data: {
-              ...data,
-              tenantId,
-              services: {
-                create: (
-                  await tx.service.findMany({
-                    where: { tenantId },
-                    select: { id: true },
-                  })
-                ).map((s) => ({ serviceId: s.id })),
+    withTenantLock(
+      tenantId,
+      async (tx) =>
+        id
+          ? tx.staff.update({ where: { tenantId_id: { tenantId, id } }, data })
+          : tx.staff.create({
+              data: {
+                ...data,
+                tenantId,
+                services: {
+                  create: (
+                    await tx.service.findMany({
+                      where: { tenantId },
+                      select: { id: true },
+                    })
+                  ).map((s) => ({ serviceId: s.id })),
+                },
               },
-            },
-          }),
+            }),
+      actorId,
     ),
-  savePolicy: (tenantId: string, data: z.infer<typeof policySchema>) =>
-    withTenantLock(tenantId, (tx) =>
-      tx.tenant.update({ where: { id: tenantId }, data }),
+  savePolicy: (
+    tenantId: string,
+    data: z.infer<typeof policySchema>,
+    actorId?: string,
+  ) =>
+    withTenantLock(
+      tenantId,
+      (tx) => tx.tenant.update({ where: { id: tenantId }, data }),
+      actorId,
     ),
-  saveSchedule: (tenantId: string, data: z.infer<typeof scheduleSchema>) =>
-    withTenantLock(tenantId, async (tx) => {
-      await tx.staff.findUniqueOrThrow({
-        where: { tenantId_id: { tenantId, id: data.staffId } },
-      });
-      for (const id of data.serviceIds)
-        await tx.service.findUniqueOrThrow({
-          where: { tenantId_id: { tenantId, id } },
+  saveSchedule: (
+    tenantId: string,
+    data: z.infer<typeof scheduleSchema>,
+    actorId?: string,
+  ) =>
+    withTenantLock(
+      tenantId,
+      async (tx) => {
+        await tx.staff.findUniqueOrThrow({
+          where: { tenantId_id: { tenantId, id: data.staffId } },
         });
-      await tx.staff.update({
-        where: { tenantId_id: { tenantId, id: data.staffId } },
-        data: { customSchedule: data.customSchedule },
-      });
-      const scope = { tenantId, staffId: data.staffId };
-      await tx.staffSchedule.deleteMany({ where: scope });
-      await tx.staffAbsence.deleteMany({ where: scope });
-      await tx.staffService.deleteMany({ where: scope });
-      await tx.staffSchedule.createMany({
-        data: data.schedule.map((h) => ({ ...scope, ...h })),
-      });
-      await tx.staffAbsence.createMany({
-        data: data.absences.map((h) => ({ ...scope, ...h })),
-      });
-      await tx.staffService.createMany({
-        data: data.serviceIds.map((serviceId) => ({ ...scope, serviceId })),
-      });
-    }),
+        for (const id of data.serviceIds)
+          await tx.service.findUniqueOrThrow({
+            where: { tenantId_id: { tenantId, id } },
+          });
+        await tx.staff.update({
+          where: { tenantId_id: { tenantId, id: data.staffId } },
+          data: { customSchedule: data.customSchedule },
+        });
+        const scope = { tenantId, staffId: data.staffId };
+        await tx.staffSchedule.deleteMany({ where: scope });
+        await tx.staffAbsence.deleteMany({ where: scope });
+        await tx.staffService.deleteMany({ where: scope });
+        await tx.staffSchedule.createMany({
+          data: data.schedule.map((h) => ({ ...scope, ...h })),
+        });
+        await tx.staffAbsence.createMany({
+          data: data.absences.map((h) => ({ ...scope, ...h })),
+        });
+        await tx.staffService.createMany({
+          data: data.serviceIds.map((serviceId) => ({ ...scope, serviceId })),
+        });
+      },
+      actorId,
+    ),
   // Internal trusted repository helper; HTTP cancellation uses the authorized lifecycle service.
   cancelBooking: (tenantId: string, id: string) =>
     withTenantLock(tenantId, async (tx) => {
@@ -153,21 +179,41 @@ export const tenantRepository = {
       await enqueue(tx, after, "CANCELLED");
       return { id: after.id, status: after.status };
     }),
-  saveHours: (tenantId: string, data: z.infer<typeof hoursSchema>) =>
-    withTenantLock(tenantId, async (tx) => {
-      await tx.businessHour.deleteMany({ where: { tenantId } });
-      await tx.businessHour.createMany({
-        data: data.map((h) => ({ ...h, tenantId })),
-      });
-    }),
+  saveHours: (
+    tenantId: string,
+    data: z.infer<typeof hoursSchema>,
+    actorId?: string,
+  ) =>
+    withTenantLock(
+      tenantId,
+      async (tx) => {
+        await tx.businessHour.deleteMany({ where: { tenantId } });
+        await tx.businessHour.createMany({
+          data: data.map((h) => ({ ...h, tenantId })),
+        });
+      },
+      actorId,
+    ),
 };
 async function withTenantLock<T>(
   tenantId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  actorId?: string,
 ) {
   return db.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
+      const tenant = await tx.tenant.findUniqueOrThrow({
+        where: { id: tenantId },
+      });
+      if (!tenant.active) throw new AppError(403, "店家已停用");
+      if (actorId) {
+        const member = await tx.membership.findUnique({
+          where: { tenantId_userId: { tenantId, userId: actorId } },
+        });
+        if (!member || member.role === "STAFF")
+          throw new AppError(403, "需要管理者權限");
+      }
       return fn(tx);
     },
     { maxWait: 60000, timeout: 60000 },

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "notifications:dispatch": "tsx scripts/dispatch-notifications.ts",
+    "platform:admin": "tsx scripts/platform-admin.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
@@ -24,7 +25,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "setup:env": "node scripts/init-env.mjs",
     "verify": "npm run lint && npm run typecheck && npm test && npm run test:integration && npm run test:migrations && npm run build && npm run format:check",
-    "test:migrations": "node scripts/verify-clean-migrations.mjs"
+    "test:migrations": "node scripts/verify-clean-migrations.mjs",
+    "test:backup": "node scripts/verify-backup-restore.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

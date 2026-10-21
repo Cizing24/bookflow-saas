@@ -21,16 +21,17 @@ enum BookingStatus {
 }
 
 model User {
-  id            String       @id
+  id            String         @id
   name          String
-  email         String       @unique
-  emailVerified Boolean      @default(false)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
   image         String?
-  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
   sessions      Session[]
   accounts      Account[]
   memberships   Membership[]
+  platformAdmin PlatformAdmin?
 }
 
 model Session {
@@ -81,6 +82,7 @@ model Tenant {
   id                      String         @id @default(cuid())
   name                    String
   slug                    String         @unique
+  active                  Boolean        @default(true)
   timezone                String         @default("Asia/Taipei")
   minNoticeMinutes        Int            @default(0)
   maxAdvanceDays          Int            @default(90)
@@ -276,4 +278,22 @@ model RateLimit {
   key       String   @id
   count     Int
   expiresAt DateTime @db.Timestamptz(3)
+}
+
+model PlatformAdmin {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlatformEvent {
+  id        String   @id @default(cuid())
+  actorId   String
+  tenantId  String?
+  action    String
+  reason    String
+  before    Boolean?
+  after     Boolean?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
 }

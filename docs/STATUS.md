@@ -1,77 +1,57 @@
-# Phase 3 — Business Operations 交接狀態
+# Phase 4 — Production Readiness & Portfolio Delivery
 
-更新日期：2026-10-22（Asia/Taipei）。本階段已完成 Windows 本機真實 PostgreSQL 與正式 Build 的桌面／手機驗證，保留前兩階段多租戶與排程引擎。未部署 Production，未使用正式寄信憑證或寄送正式 Email。歷史結果保留於 [Phase 1](history/PHASE1_STATUS.md) 與 [Phase 2](history/PHASE2_STATUS.md)。
+更新日期：2026-10-22（Asia/Taipei）。本機工程驗收完成；乾淨 Linux CI／Docker 驗證等待本次提交推送後讀回。沒有取得指定部署平台／正式 Secrets／Production 發布授權，未部署公開 Demo、未寄送正式 Email。
 
-## 完成範圍
+歷史結果保留於 [Phase 1](history/PHASE1_STATUS.md)、[Phase 2](history/PHASE2_STATUS.md)、[Phase 3](history/PHASE3_STATUS.md)。沒有以過去 CI success 代替本次結果。
 
-| 功能             | 實際交付                                                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 預約生命週期     | CONFIRMED、CANCELLED、COMPLETED、NO_SHOW；禁止終態回復與改期，DB trigger 再次保護；完成須服務結束、未到場須已開始                  |
-| 詳情與修改／改期 | 管理面板調整服務、員工、時間；保留 Booking ID、交易內重驗排程與衝突、revision 拒絕舊畫面覆寫                                       |
-| 顧客／店家取消   | 顧客受原開始時間與截止政策限制；店家可處理自身授權範圍；取消釋放緩衝占用，重送不重寫事件                                           |
-| 稽核             | 建立與每次異動同交易記錄 UTC 時間、操作者、動作、前後狀態／服務／員工／時間／金額快照                                              |
-| 專業行事曆       | 資料庫日／週查詢、員工欄位、服務與員工篩選、狀態文字與色彩、點選詳情、操作改期與取消；重疊歷史／替代預約分欄，DST 重複牆上時間分欄 |
-| RBAC             | Owner 管理成員／截止設定；Admin 管理排班、服務、預約；Staff 只讀寫明確綁定的自身預約，無綁定時無工作資料；舊 overview 同時收緊範圍 |
-| 顧客管理         | 同租戶搜尋、聯絡快照、Email 彙整預約次數與歷史分頁；Staff 無顧客名冊權限，只能取得自身工作必要聯絡資料                             |
-| 通知             | 交易 Outbox、成立／取消／改期與開始前提醒、HTTP EmailProvider 介面、租約 claim、重試、過期提醒跳過、Owner 預覽與 worker 指令       |
-| 自助管理         | 256-bit 隨機 Token、Booking 只存 SHA-256；fragment 連結、no-store / no-referrer、自助查看／改期／取消、截止分鐘設定                |
-| Dashboard        | 店家時區今日預約、即將開始、期間完成／取消、各服務量、逐日趨勢；完整期間查詢，Staff 統計只含自身                                   |
-| 公開反濫用       | PostgreSQL 原子共享限流、429 與 Retry-After；預設不信任 IP header，可信 Proxy 每 IP 模式需明確設定                                 |
-| 文件             | README、ARCHITECTURE、ROADMAP、PERMISSIONS、OPERATIONS、Phase 2 歷史交接與本文件                                                   |
+## 本次交付
 
-第四個 Migration 為 append-only：新增終態、截止設定、員工帳號複合 FK 綁定、Token 雜湊、revision、BookingEvent、Notification 與 RateLimit，保留前三個 Migration 原文、所有排程 CHECK、occupied trigger 與 GiST exclusion。沒有 reset、db push、資料清空或 Production Migration。
+| 範圍                                                                                                                                          | 交付                                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 平台管理                                                                                                                                      | `/platform`、真實 Session、獨立 PlatformAdmin、所有店家 25 筆分頁、啟用／停用、平台統計與最近 50 稽核；離線 CLI 授予／撤銷亦記錄                                                                    |
+| 店家停用                                                                                                                                      | 公開入口與建單／改期拒絕、店家管理拒絕；既有私人連結仍可查看／取消；不刪歷史、不自動取消既有預約                                                                                                    |
+| 交易安全                                                                                                                                      | 與建單共用 Tenant lock、expectedActive 防舊頁面、狀態＋稽核同交易、設定寫入鎖後重驗 Membership                                                                                                      |
+| HTTP 強化                                                                                                                                     | 共享認證限流、精確 Origin、HttpOnly／Lax／HTTPS Secure Cookie、業務 JSON 64 KiB streaming 上限、JSON PATCH null 驗證、錯誤 no-store、基本 CSP／Permissions-Policy                                   |
+| UI                                                                                                                                            | 沿用 Design System、focus-visible／reduced-motion、平台 loading／empty／error／分頁、手機 table 捲動、行事曆詳情聚焦／Escape／返回原事件                                                            |
+| 部署                                                                                                                                          | Prisma schema drift                                                                                                                                                                                 | No difference detected（自訂 SQL 約束另驗） |
+| 本機備份還原                                                                                                                                  | 成功還原至唯一暫時 DB，比對 7 張核心表數量、GiST 與兩個 trigger，清理自身暫時資料                                                                                                                   |
+| Production Build、Docker tools／非 root standalone runtime、容器 health、正式 env 範本、Migration／worker、備份還原／發版／回滾與外部授權交接 |
+| CI                                                                                                                                            | PostgreSQL service、npm ci、Migration／Seed、Lint／Typecheck／Format／Unit／Integration／Migration 重建／audit／Build／Playwright，再 Docker Build／容器 Migration／Health smoke；保留失敗 artifact |
+| 作品文件                                                                                                                                      | README 商業問題／功能／架構／ERD／真實截圖／安裝／部署／限制、TECHNICAL_DEEP_DIVE 面試手冊，更新 ARCHITECTURE／PERMISSIONS／OPERATIONS／ROADMAP                                                     |
 
-## 實際驗證結果
+第五個 append-only Migration 新增 Tenant.active、PlatformAdmin、PlatformEvent；第六個校正新外鍵 ON UPDATE CASCADE，保留已套用的第五個原文。前四個 Migration 原文、複合 FK、CHECK、GiST exclusion、occupied／終態 trigger 保留。沒有 reset、db push、正式 Migration、Production 發布、合併 main 或 force push。
 
-環境：Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、Prisma 7.10.1、Next.js 16.4.2 Webpack。執行時間涵蓋 2026-10-21 至 2026-10-22。DB 測試沒有 Mock Database；營運整合測試僅注入 Session identity，Membership、查詢、交易與約束都使用真實 PostgreSQL。E2E 使用真實 Better Auth Session。
+## 本機實際驗證
 
-| 檢查                                                | 最終實際結果                                                                                                                               |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| npm run db:migrate                                  | 四個 Migration 成功套用到本機開發 DB                                                                                                       |
-| npm run test:migrations                             | 隨機全新本機 DB 成功重建四個 Migration，讀回原排程約束、索引、occupied trigger、btree_gist 與新增營運資料表／狀態 trigger，清除自身暫時 DB |
-| Prisma migrate diff                                 | --from-config-datasource --to-schema prisma/schema.prisma --exit-code：No difference detected；自訂 SQL 約束另由重建與整合測試驗證         |
-| npm run lint                                        | 通過                                                                                                                                       |
-| npm run typecheck                                   | 通過                                                                                                                                       |
-| npm test                                            | 26 項通過（前階段 18＋狀態／截止／Token 4＋Provider 契約 2＋行事曆重疊 2）                                                                 |
-| npm run test:integration                            | 24 項通過（前階段 15＋營運 9）                                                                                                             |
-| npm run build                                       | 最新程式正式 Webpack Build 通過，TypeScript 保持啟用                                                                                       |
-| E2E_SERVER_COMMAND='npm run start' npm run test:e2e | 8 項通過，Chromium 桌面／手機各 4 項完整情境                                                                                               |
-| npm run format:check                                | 通過                                                                                                                                       |
-| git diff --check                                    | 通過                                                                                                                                       |
-| npm audit --omit=dev                                | 0 vulnerabilities                                                                                                                          |
+Windows、Node.js 22.23.1、專案本機 PostgreSQL 18.4（127.0.0.1:5433）、Next.js 16.4.2 Webpack。整合測試用真實 PostgreSQL；營運測試只注入 Session identity，E2E 用真正 Better Auth Session。所有顧客／帳號 fixture 皆為合成資料且只清除自身範圍。
 
-所有 fixture 為唯一租戶／帳號／Email 的合成資料，測試只清除自己的資料。Outbox 測試限定其 fixture 租戶，未將其他店家的通知標為測試寄送成功。測試保留限流，認證遇到 429 時依 Retry-After 等待。
+| 檢查                           | 結果                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| db:migrate                     | 6 個 Migration 套用成功                                                                                            |
+| test:migrations                | 隨機空 DB 成功重建 6 個 Migration；讀回排程約束、索引、trigger、extension、營運／平台資料表，清除自身暫時 DB       |
+| lint／typecheck                | 通過                                                                                                               |
+| Unit                           | 30 項通過                                                                                                          |
+| Integration                    | 28 項通過                                                                                                          |
+| Prisma schema drift            | No difference detected（自訂 SQL 約束另驗）                                                                        |
+| 本機備份還原                   | 成功還原至唯一暫時 DB，比對 7 張核心表數量、GiST 與兩個 trigger，清理自身暫時資料                                  |
+| Production Build               | 通過，TypeScript 保持啟用                                                                                          |
+| Production Server E2E          | 15 項通過：Chromium 桌面、平板與手機各 5 項                                                                        |
+| HTTP 併發                      | 桌面／平板／手機每種裝置 20 請求，1 成功／19 衝突，讀回 1 筆有效預約；20 條獨立 DB connection 的既有約束回歸也通過 |
+| 正式相依 npm audit --omit=dev  | 0 vulnerabilities                                                                                                  |
+| Seed                           | 成功連續執行兩次，示範資料與帳號可重跑且不重設                                                                     |
+| format:check／git diff --check | 通過                                                                                                               |
 
-初輪新增 E2E 因行事曆 select 的 label 包含選項文字而無法精確定位「檢視」；已補上檢視、篩選、改期與成員選單的 aria-label，隨後重跑**完整八項桌面／手機矩陣**全數通過。截圖也已人工檢視：[桌面](images/calendar-chromium.png)、[手機](images/calendar-mobile.png)，皆為合成測試資料。
+完整 E2E 涵蓋註冊建店、服務／員工／排班、匿名成功預約、管理列表與行事曆、顧客改期／取消、取消釋放／重訂、租戶隔離、Staff 權限、未登入與越權拒絕、遺失 HTTP 回應冪等、平台 Owner 隔離／啟停／稽核／CSRF／Cookie／撤權。資料庫測試另外涵蓋終態、版本競爭、Token 範圍、Outbox 並行與重試。
 
-本機受限執行環境曾阻擋 PostgreSQL socket 與 Build 檔案操作，改以允許本機程序／連線的執行權限完成；沒有因此移除檢查、關閉安全機制或跳過 DB／瀏覽器驗證。
+初輪平台 E2E 對串流 not-found 頁面斷言 HTTP 404 而失敗；Next.js 內附文件確認串流開始後保留 200。修正為同時驗證公開 API 404、瀏覽器 not-found 內容與不存在預約按鈕，再重跑完整矩陣並擴增平板為十五項全數通過，沒有降低 API 授權或隱藏錯誤。受限 sandbox 的 DB socket／Build EPERM 改以允許本機程序的權限完成，沒有移除檢查。
 
-## 覆蓋的安全與一致性情境
+## 尚未完成與已知邊界
 
-- 完整狀態轉換矩陣、提前完成／未到場拒絕、截止時間恰好邊界與開始後拒絕。
-- 改期排除自己、仍拒絕其他有效占用；同時兩筆改期搶同一時段只成功一筆；舊 revision 拒絕。
-- 原 20 獨立 PostgreSQL 連線、Application Service 與冪等競爭回歸保留；桌面／手機 20 HTTP 請求各 1 成功、19 衝突。
-- Staff 水平越權（其他員工預約／轉派）拒絕、無綁定查無資料、顧客名冊／通知／設定／成員垂直越權拒絕、跨租戶存取與綁定拒絕；DB 複合 FK 直接寫入也拒絕跨店綁定。
-- Owner 成員新增／改角色／綁定／移除；下一個請求立即依新 Membership 限制或拒絕，不可移除／降權 Owner。
-- 隨機管理 Token、無效 Token 拒絕、input Booking ID 無法轉移權限；顧客不能完成服務或標記未到場。
-- 預約成立同交易寫入事件與兩筆 Outbox；冪等重試保留原預約，不再次回傳原始 Token。
-- Provider HTTP payload 僅包含寄信契約，不將 DB 工作欄位／租約／Booking 資料轉交 Gateway；正式環境拒絕 preview，缺設定或 503 不回報成功。
-- 寄信失敗保留重試、並行 worker 只 claim 一次、過期 PROCESSING 租約復原沿用同一去重 key、失效版本提醒跳過、PREVIEWED 的 sentAt 為 null。
-- 顧客搜尋與歷史依租戶隔離、次數與真實 DB 一致；Staff Dashboard 同樣依自身 Booking scope 計算。
-- 共享限流並發請求上限及過期 counter 重設。
-- 既有 Phase 1 / 2 認證、營業時間、班表／休假／資格、DST、緩衝、跨店關聯、防衝突、遺失回應冪等與登出回歸完整保留。
-
-## Git 交付與第四階段接續
-
-交付分支為 `phase3-business-operations`，保留 main 與既有提交歷史；沒有合併 main、force push 或正式部署。提交 SHA 與遠端讀回結果由本次交付回報提供。Phase 3 的 Linux CI 尚未執行；不可沿用 Phase 2 的 CI success 當成本次驗證。
-
-下一階段先閱讀 README、AGENTS、ARCHITECTURE、PERMISSIONS、OPERATIONS 與此文件。Phase 4 依 ROADMAP 制定商業化與上線需求，以下仍需另外完成：
-
-- **正式 Email**：提供 Gateway／Provider 憑證、已驗證寄件網域與授權測試收件人；實測接受、冪等、投遞與退信。SENT 只表示 Provider 接受；本次沒有正式寄送。
-- **部署與排程**：正式 worker 排程、失敗／延遲監控、HTTPS／Origin／Proxy／Secrets／最小權限與受控 Migration。新增雲端資源與 Production 部署需另外授權。
-- **Exactly-once 邊界**：寄信為 at-least-once；Gateway 必須依 Notification ID 持久化去重，否則當機復原可能重複。Preview 是 PREVIEWED，不能當作 SENT。
-- **舊預約與私人連結**：Phase 1 / 2 既有資料不回填 Token。新 Token 僅首次建單回應與成立通知提供；若首次回應遺失，從通知取回或聯絡店家。管理連結沒有自動失效／輪替介面，目前由狀態機與截止時間限制寫入，讀取僅提供該單的最小資料；撤銷／保留政策列入隱私生命週期工作。
-- **容量與資料量**：保留同店 Tenant lock，寄信期間最多等待 HTTP timeout 10 秒。行事曆最多 92 天／2000 筆，超出須縮小；列表 200 筆、顧客歷史每頁 50 筆，統計查完整指定期間。大型店家需 SQL 聚合／顧客查詢／連線池／鎖等待與容量驗收。
-- **個資與帳號營運**：相同 Email 彙整不是身分驗證；備份還原、資料保留／撤銷／刪除、Email 驗證、密碼復原、Email 邀請、Owner 移轉仍待實作。
-- **產品邊界**：本次未加入訂閱付款、訂金、方案配額或自訂品牌，避免在 Business Operations 階段改變既有產品契約。
-- **既有環境提示**：pg 8 adapter 仍提示未來 pg 9 的 query 排隊棄用；目前驗證通過。開發依賴背景保留於 Phase 2 歷史，本次未升級依賴；正式依賴安全掃描為 0。
+- 公開 Production／Demo：尚無部署帳戶、目標 DB／網域與 Secrets 的授權交接；見 DEPLOYMENT。GitHub Push 權限可用，CI 結果將另讀回。
+- Docker：本機沒有 Docker CLI，交由 GitHub runner 實際 Build 與 smoke；沒有把 Dockerfile 存在視為驗證通過。
+- 正式 Email：未提供 Gateway／寄件網域／授權收件者，不宣稱寄送或投遞成功。worker／告警須由正式平台配置；SENT 僅表示 Provider 接受，Gateway 必須去重。
+- 備份：已提供可操作的備份／隔離還原及回滾流程；正式環境與真實資料量的還原演練、RPO／RTO、PITR 尚無授權環境。
+- 商用帳號／隱私：Email 驗證／復原／邀請、Owner 移轉、Token 撤銷／輪替、資料保留／刪除、訂閱金流不在本次交付範圍。
+- 容量：同店鎖、Provider 期間持鎖、Outbox／限流資料保留、大量資料聚合仍需容量工程；行事曆 92 天／2000 筆、列表最近 200 筆。20 併發不代表 SLA。
+- 安全邊界：不是 PostgreSQL RLS、不是完整 nonce CSP。Auth body 需 proxy 上限，預設不信任 IP headers。HTTPS Cookie／TLS／HSTS／最小 DB 權限需部署環境再驗。
+- 上游提示：pg 8 adapter 提示未來 pg 9 的 query 排隊棄用；目前測試通過，未因此關閉警告或改用未驗證版本。

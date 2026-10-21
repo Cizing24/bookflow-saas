@@ -1,5 +1,16 @@
 # BookFlow 架構
 
+## Phase 4 增量
+
+- 新增 `modules/platform`、`/platform` 與 `/api/platform`。獨立 PlatformAdmin 授權，不擴張 Membership Role；平台基本資料投影、25 店／頁、Repeatable Read 統計快照、最近 50 稽核。
+- 第五個 append-only Migration 新增 Tenant.active、PlatformAdmin、PlatformEvent；第六個對齊新外鍵 ON UPDATE CASCADE，不改已套用的 Migration。啟停以 Tenant row lock 與 expectedActive 驗證，同 transaction 記錄前後狀態、原因、操作者與 UTC 時間。
+- 公開讀取只選 active tenant；建單鎖後 schedulingContext 再驗 active，解決停用／建單競爭。店家管理 authorization/access 檢查 active。設定 repository 鎖後重驗 actor Membership，避免等待期間角色撤銷仍成功。既有顧客可讀取／取消；改期需 active。
+- Better Auth endpoint 原限流保留，HTTP POST 增加 PostgreSQL 共享限流及 Origin；業務 JSON stream 上限 64 KiB，所有業務 API 回應 no-store／no-referrer；安全 Cookie 依 HTTPS Origin，新增基本 CSP／Permissions-Policy。
+- `/health` 讀實際 schema／DB、失敗 503。Docker tools/runtime、CI 容器 smoke、正式 env 範本與部署／回滾／備份還原手冊見 [DEPLOYMENT](DEPLOYMENT.md)。Docker build 使用 BOOKFLOW_STANDALONE=true，本機 npm start 保持標準 Next server。
+- UI 沿用同一 Button／Input／Card、色彩與 spacing，補全域 focus-visible／reduced-motion、平台 loading／empty／error、手機可捲動表格、行事曆詳情鍵盤聚焦／Escape／返回原事件焦點。詳情為頁內 region。
+
+完整工程原理與取捨見 [TECHNICAL_DEEP_DIVE](TECHNICAL_DEEP_DIVE.md)。以下保留前三階段架構與契約；若歷史段落提到「未提供備份文件」，本階段已補文件，正式演練仍需依 STATUS 查驗。
+
 ## 系統邊界
 
 沿用 Phase 1 Next.js Modular Monolith、PostgreSQL、Better Auth 與 strict TypeScript，沒有重建專案。

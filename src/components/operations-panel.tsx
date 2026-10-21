@@ -335,6 +335,15 @@ export function CalendarPanel({ tenant }: { tenant: Tenant }) {
   const [version, setVersion] = useState(0);
   const [saved, setSaved] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
+  const detailPanel = useRef<HTMLDivElement>(null);
+  const selectedTrigger = useRef<HTMLButtonElement | null>(null);
+  function closeDetail() {
+    setSelected("");
+    selectedTrigger.current?.focus();
+  }
+  useEffect(() => {
+    if (selected) detailPanel.current?.focus();
+  }, [selected]);
   const days = view === "week" ? 7 : 1;
   const q = new URLSearchParams({
     from: date,
@@ -531,7 +540,10 @@ export function CalendarPanel({ tenant }: { tenant: Tenant }) {
                                 return (
                                   <button
                                     key={b.id}
-                                    onClick={() => setSelected(b.id)}
+                                    onClick={(e) => {
+                                      selectedTrigger.current = e.currentTarget;
+                                      setSelected(b.id);
+                                    }}
                                     className={`absolute overflow-auto rounded border-l-4 p-1 text-left text-xs shadow-sm focus:outline-2 ${colors[b.status]}`}
                                     style={{
                                       top: position.top,
@@ -563,8 +575,16 @@ export function CalendarPanel({ tenant }: { tenant: Tenant }) {
         )}
       </Card>
       {selected && (
-        <Card>
-          <Button variant="ghost" onClick={() => setSelected("")}>
+        <Card
+          ref={detailPanel}
+          role="region"
+          aria-label="預約操作面板"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") closeDetail();
+          }}
+        >
+          <Button variant="ghost" onClick={closeDetail}>
             關閉詳情
           </Button>
           <Feedback error={detail.error} loading={detail.loading} />

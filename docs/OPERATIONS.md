@@ -1,8 +1,10 @@
 # BookFlow 營運操作與 Email 設定
 
+Phase 4 平台管理入口為 `/platform`，授權指令 `npm run platform:admin -- grant|revoke registered-email`，權限獨立於店家角色且有稽核。正式 Docker、Health、環境範本、備份／還原、發布及回滾見 [DEPLOYMENT](DEPLOYMENT.md)。Seed 僅限 development/test，不自動取得平台權限，也不發送郵件。
+
 ## 本機營運操作
 
-1. 依 README 啟動資料庫、套用四個 Migration、啟動網站。
+1. 依 README 啟動資料庫、套用六個 Migration、啟動網站。
 2. Owner 在「店家與成員」輸入**已註冊**成員 Email、Admin / Staff 角色與服務人員綁定。未綁定 Staff 看不到預約；沒有 Email 邀請與 Owner 移轉流程。
 3. 在同頁設定取消與改期截止分鐘，預設 1440（24 小時），0 代表只要求尚未開始。管理者操作不受此截止時間限制。
 4. 公開建單成功畫面保存「管理我的預約」私人連結。沒有連結的舊資料仍可由店家操作。

@@ -153,6 +153,12 @@ test("營運行事曆、顧客、通知、角色範圍與顧客自助改期取�
     });
     await event.click();
     await expect(
+      page.getByRole("region", { name: "預約操作面板" }),
+    ).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(event).toBeFocused();
+    await event.click();
+    await expect(
       page.getByRole("heading", { name: "預約詳情", exact: true }),
     ).toBeVisible();
     await page

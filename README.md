@@ -2,7 +2,95 @@
 
 **預約，從容有序。** 多租戶預約管理 SaaS，讓店家管理服務、人員與每週營業時間，顧客透過專屬網址直接預約，管理端即時看到真實資料。
 
-Phase 3 已加入日／週行事曆、完整預約生命週期與改期稽核、Owner / Admin / Staff 權限、顧客管理、自助管理連結、Outbox 與可設定 Email Provider、共享限流及真實營運 Dashboard。沿用 Phase 2 的員工排班、緩衝與 DST 排程。預約衝突由 PostgreSQL 排他約束保護，包含 20 請求併發；公開預約使用冪等鍵避免重試重複寫入。介面為臺灣繁體中文，價格幣別為新臺幣。
+以工作室、美容護理與單次服務預約為情境，處理人工訊息排程容易發生的撞期、人員資格、休假、改期與重複送單問題。實際提供多店家隔離、Owner / Admin / Staff、服務與人員、營業／排班／休假／緩衝、真實可用時段、顧客預約／取消／改期、日週行事曆、顧客管理、營運統計、稽核與交易 Outbox。
+
+Phase 4 補齊獨立平台管理、店家啟停、共享認證限流、輸入與 HTTP 安全邊界、鍵盤焦點、Docker／CI 與部署回滾文件。訂閱金流及完整帳號營運仍在產品範圍之外。介面為臺灣繁體中文，價格幣別為新臺幣。
+
+Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。**沒有公開部署的 Demo URL**；本機 Demo 為 `http://localhost:3000/b/flow-studio`，依下方 Seed 建立。精確驗證與外部授權邊界見 [STATUS](docs/STATUS.md)。
+
+## 系統架構與資料模型
+
+```mermaid
+flowchart LR
+  Browser[管理端 / 公開預約 / 顧客自助 / 平台管理] --> HTTP[Next.js Route Handlers\nOrigin / 共享限流 / JSON / Zod]
+  HTTP --> APP[Application Services\nSession / Membership / PlatformAdmin]
+  APP --> Engine[純函式 Availability Engine\nIANA timezone / DST / 緩衝]
+  APP --> DB[(PostgreSQL\n複合 FK / CHECK / trigger / GiST exclusion)]
+  DB --> Outbox[Notification Outbox]
+  Worker[排程 Worker / 租約重試] --> Outbox
+  Worker --> Email[可替換 Email Gateway\nNotification ID 去重]
+```
+
+```mermaid
+erDiagram
+  User ||--o{ Session : authenticates
+  User ||--o{ Account : credentials
+  User ||--o{ Membership : joins
+  User ||--o| PlatformAdmin : independentPrivilege
+  Tenant ||--o{ Membership : authorizes
+  Tenant ||--o{ Service : offers
+  Tenant ||--o{ Staff : employs
+  Tenant ||--o{ BusinessHour : opens
+  Tenant ||--o{ Customer : snapshots
+  Tenant ||--o{ Booking : owns
+  Staff ||--o{ StaffSchedule : works
+  Staff ||--o{ StaffAbsence : excludes
+  Staff ||--o{ StaffService : qualifies
+  Service ||--o{ StaffService : qualifies
+  Staff ||--o| Membership : binds
+  Staff ||--o{ Booking : performs
+  Service ||--o{ Booking : snapshots
+  Customer ||--o{ Booking : requests
+  Booking ||--o{ BookingEvent : audits
+  Booking ||--o{ Notification : enqueues
+  Tenant {
+    string id PK
+  }
+  Booking {
+    string id PK
+    string tenantId FK
+    string staffId FK
+    string serviceId FK
+    string customerId FK
+    datetime startAt
+    datetime endAt
+    string status
+    int revision
+    string idempotencyKey UK
+  }
+  PlatformAdmin {
+    string userId PK
+  }
+  PlatformEvent {
+    string id PK
+    string actorId
+    string tenantId
+    string action
+    datetime createdAt
+  }
+  RateLimit {
+    string key PK
+    int count
+    datetime expiresAt
+  }
+  Verification {
+    string id PK
+    string identifier
+    datetime expiresAt
+  }
+```
+
+`PlatformEvent` 保留 scalar actor／tenant ID，避免帳號刪除連帶抹除平台稽核。完整欄位以 [Prisma schema](prisma/schema.prisma) 與 SQL migrations 為準。
+
+## 安全與預約一致性
+
+- 每次管理請求從伺服器 Session 查 Membership；URL tenantId 不是權限。Staff 只操作綁定自身員工。業務關聯使用 tenantId 複合 FK，不能把其他店家的服務／人員／顧客連入預約。
+- 平台權限來自獨立 PlatformAdmin，不會由 Owner 升級或反向授予店家資料權限。平台只看到基本店家狀態與計數，啟停與原因同交易稽核。
+- UTC instant 儲存、IANA 店家時區計算排程。前端只顯示後端真實時段；伺服器推導 endAt／價格／服務與緩衝快照。
+- 建立／改期／取消與設定共用 Tenant row lock，鎖後重新驗證；PostgreSQL partial GiST exclusion 另外阻擋同員工有效占用交集。取消自動釋放，revision 防舊畫面覆寫，終態 trigger 防復活。
+- 租戶內 idempotencyKey＋請求 SHA-256 避免遺失回應重試重複建單；256-bit 私人管理 Token 僅授權對應預約。Origin、Session cookie、Zod、共享限流與安全 headers 保護 HTTP 邊界。
+
+設計取捨與面試說明見 [TECHNICAL_DEEP_DIVE](docs/TECHNICAL_DEEP_DIVE.md)，具體權限見 [PERMISSIONS](docs/PERMISSIONS.md)。
 
 ## 畫面
 
@@ -15,6 +103,10 @@ Phase 3 已加入日／週行事曆、完整預約生命週期與改期稽核、
 ![Phase 3 週行事曆（合成測試資料）](docs/images/calendar-chromium.png)
 
 [手機行事曆驗證畫面](docs/images/calendar-mobile.png)
+
+![Phase 4 平台管理（合成測試資料）](docs/images/platform-desktop.png)
+
+[手機平台管理驗證畫面](docs/images/platform-mobile.png)
 
 ## 技術
 
@@ -72,13 +164,19 @@ Docker 使用 `docker compose stop`，保留 volume。勿任意加入 -v，以�
 
 ```powershell
 $env:SEED_PASSWORD = '請自行選定至少10字元的本機密碼'
+$env:SEED_DEMO_BOOKINGS = 'true'
 npm run db:seed
 Remove-Item Env:SEED_PASSWORD
+Remove-Item Env:SEED_DEMO_BOOKINGS
 ```
 
-建立 owner@bookflow.local 與 /b/flow-studio 示範店家，包含兩項服務、兩位人員與週營業時間。Seed 可重跑，既有帳號密碼與資料不會被重設。示範資料不代表真實營運資料。也可完全不使用 Seed，直接註冊自己的帳號。
+建立 owner@bookflow.local 與 /b/flow-studio 示範店家，包含兩項服務、兩位人員與週營業時間；選用 SEED_DEMO_BOOKINGS 透過真實排程服務建立最多三筆未來合成預約及對應事件／Outbox，可直接查看行事曆和統計。Seed 可重跑，不重設既有密碼或覆寫資料，禁止在 NODE_ENV=production 執行。示範資料不代表真實營運資料，不會授予平台管理權限，也不會自動寄信。
+
+平台營運者先註冊一般帳號，再於受信任終端執行 `npm run platform:admin -- grant registered-email`，登入後到 `/platform`。撤銷用 `revoke`；每次權限改動記錄稽核。這是離線營運權限，店家成員介面沒有授予入口。
 
 ## 驗證
+
+2026-10-22 本機實際結果：Lint／Typecheck／Production Build 通過，Unit **30 項**、PostgreSQL Integration **28 項**、正式伺服器 Playwright **15 項**通過；桌面／平板／手機 20 請求搶訂各 **1 成功、19 衝突**，全新 DB 的 6 個 Migration 重建成功。正式依賴 audit 為 0。乾淨 Linux CI 與 Docker 結果及驗證邊界見 [完整測試報告](docs/STATUS.md)。
 
 ```powershell
 npm run lint
@@ -86,6 +184,7 @@ npm run typecheck
 npm test
 npm run test:integration
 npm run test:migrations
+npm run test:backup
 npm run build
 npx playwright install chromium
 npm run test:e2e
@@ -107,6 +206,8 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 ## 專案文件
 
 - [營運操作與 Email Provider 設定](docs/OPERATIONS.md)
+- [容器、部署、備份還原與回滾](docs/DEPLOYMENT.md)
+- [技術面試 Deep Dive](docs/TECHNICAL_DEEP_DIVE.md)
 - [角色權限矩陣](docs/PERMISSIONS.md)
 - [架構與安全邊界](docs/ARCHITECTURE.md)
 - [進度、驗證證據與已知限制](docs/STATUS.md)
@@ -115,4 +216,8 @@ API 寫入範例需攜帶 Origin: http://localhost:3000，管理 API 另外需�
 
 Windows 的 Turbopack CSS worker 本次出現提前退出，dev / build 明確使用 Next.js 支援的 Webpack。所有 TypeScript 與安全檢查仍保持啟用。
 
-尚未部署正式環境，也未寄送正式郵件。開發環境設定 EMAIL_PROVIDER=preview 後執行 `npm run notifications:dispatch`，Owner 可在通知頁查驗 PREVIEWED，不能視為正式寄送。正式 Provider、排程 worker、Proxy 限流設定與監控請依 OPERATIONS 設定。訂閱付款、Email 邀請、備份還原及隱私資料保留屬 Phase 4／上線工作。
+## 已知限制與技術取捨
+
+尚未部署正式環境，也未寄送正式郵件。開發環境設定 EMAIL_PROVIDER=preview 後執行 `npm run notifications:dispatch`，Owner 可查驗 PREVIEWED；正式 Provider、排程 worker、Proxy 與監控依 OPERATIONS／DEPLOYMENT 設定。
+
+目前無訂閱付款、Email 驗證／復原／邀請、Owner 移轉、私人連結輪替或完整隱私刪除生命週期。同店 row lock 簡化一致性，Provider 呼叫期間亦持鎖；20 請求驗證正確性，尚無容量 SLA。行事曆最多 92 天／2000 筆，列表最近 200 筆，顧客每頁 50 筆；大量資料聚合仍有最佳化空間。不是 PostgreSQL RLS；持有原始碼執行／DB 憑證的營運者屬受信任邊界。正式公開商用前須評估這些限制並完成外部部署、郵件與還原演練。

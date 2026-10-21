@@ -36,25 +36,47 @@ export async function saveService(
   input: unknown,
   id?: string,
 ) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveService(tenantId, serviceSchema.parse(input), id);
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveService(
+    tenantId,
+    serviceSchema.parse(input),
+    id,
+    member.userId,
+  );
 }
 export async function saveStaff(tenantId: string, input: unknown, id?: string) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveStaff(tenantId, staffSchema.parse(input), id);
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveStaff(
+    tenantId,
+    staffSchema.parse(input),
+    id,
+    member.userId,
+  );
 }
 export async function saveHours(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveHours(tenantId, hoursSchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveHours(
+    tenantId,
+    hoursSchema.parse(input),
+    member.userId,
+  );
 }
 
 export async function saveSchedule(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.saveSchedule(tenantId, scheduleSchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.saveSchedule(
+    tenantId,
+    scheduleSchema.parse(input),
+    member.userId,
+  );
 }
 export async function savePolicy(tenantId: string, input: unknown) {
-  await authorize(tenantId, true);
-  return tenantRepository.savePolicy(tenantId, policySchema.parse(input));
+  const member = await authorize(tenantId, true);
+  return tenantRepository.savePolicy(
+    tenantId,
+    policySchema.parse(input),
+    member.userId,
+  );
 }
 export async function cancelBooking(tenantId: string, input: unknown) {
   await authorize(tenantId, true);

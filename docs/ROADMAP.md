@@ -13,7 +13,7 @@
 - 租戶內冪等鍵、管理者取消與釋放、20 條獨立 PostgreSQL 連線及 20 HTTP 請求併發測試。
 - Domain / Database / E2E 回歸、全新資料庫 Migration 重建；確切結果以 [STATUS](STATUS.md) 為準。
 
-## Phase 3 — Business Operations（本次交付）
+## Phase 3 — Business Operations（完成）
 
 - 完整預約狀態機、改期重驗、版本衝突、稽核、店家與顧客取消、完成與未到場。
 - 真實資料日／週行事曆、員工欄位、篩選、詳情與操作面板、響應式介面。
@@ -23,7 +23,20 @@
 - 交易 Outbox、可替換 Email Provider、延遲提醒、並行 claim、重試與本地預覽。
 - 精確測試結果與剩餘邊界以 [STATUS](STATUS.md) 為準，未部署 Production。
 
-## Phase 4 — 商業化與上線準備
+## Phase 4 — Production Readiness & Portfolio Delivery（本次交付）
+
+依 2026-10-22 本次需求，最終階段聚焦系統整合、驗收、安全與作品交付；原規劃的商業產品擴充移到下方，未擅自加入金流。
+
+1. 前三階段回歸、平台登入／獨立權限、店家總覽／啟停／平台統計／稽核。
+2. 停用與建單競爭、鎖後權限重驗、共享認證限流、JSON 大小、Session Cookie、CSRF 與安全 headers。
+3. PostgreSQL Migration／Seed 的乾淨 GitHub CI、完整桌面／手機 E2E、20 請求與真實 DB 約束驗證。
+4. Production Build、Docker tools/runtime、Health、環境範本、備份還原、部署與回滾操作。
+5. 沿用 Design System，改善焦點與鍵盤／行動裝置、合成 Demo、README 架構圖／ERD／截圖與技術面試 Deep Dive。
+6. Commit／授權 Push、讀回 CI 與確切成果；未取得外部平台／Secrets／Production 授權時保留部署邊界。
+
+實際結果與未完成項目以 [STATUS](STATUS.md) 為準。
+
+## 後續產品與正式營運工作（非本次範圍）
 
 1. 訂閱、方案配額、自訂品牌、付款／訂金：先制定產品需求、資料契約與金流安全驗收。
 2. 實際 Email Provider / Gateway 憑證、寄件網域、真實投遞與退信、冪等去重、部署 worker 排程與告警。

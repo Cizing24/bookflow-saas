@@ -10,8 +10,9 @@ import {
   notificationPreview,
   rescheduleSlots,
 } from "@/modules/operations/service";
-import { respond, sameOrigin } from "@/lib/http";
+import { respond, sameOrigin, readJson } from "@/lib/http";
 import { AppError } from "@/modules/shared/errors";
+import { z } from "zod";
 import {
   saveService,
   saveStaff,
@@ -27,7 +28,7 @@ export async function POST(
   return respond(async () => {
     sameOrigin(r);
     const { tenantId, resource } = await params;
-    const data = await r.json();
+    const data = await readJson(r);
     if (resource === "booking") return changeBooking(tenantId, data);
     if (resource === "members") return saveMember(tenantId, data);
     if (resource === "settings") return saveSettings(tenantId, data);
@@ -53,7 +54,10 @@ export async function PATCH(
   return respond(async () => {
     sameOrigin(r);
     const { tenantId, resource } = await params;
-    const { id, ...data } = await r.json();
+    const { id, ...data } = z
+      .object({ id: z.string().min(1).max(128) })
+      .passthrough()
+      .parse(await readJson(r));
     if (typeof id !== "string" || !id) throw new AppError(400, "缺少資料 ID");
     if (resource === "services") return saveService(tenantId, data, id);
     if (resource === "staff") return saveStaff(tenantId, data, id);

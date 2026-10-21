@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { respond, sameOrigin } from "@/lib/http";
+import { respond, sameOrigin, readJson } from "@/lib/http";
 import {
   publicDetail,
   publicChange,
@@ -16,7 +16,7 @@ export async function POST(r: Request) {
         mode: z.enum(["detail", "slots"]).optional(),
       })
       .passthrough()
-      .parse(await r.json());
+      .parse(await readJson(r));
     if (mode === "detail") return publicDetail(token);
     if (mode === "slots") return publicSlots(token, data);
     return publicChange(token, data);

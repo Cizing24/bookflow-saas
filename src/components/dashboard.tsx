@@ -88,9 +88,11 @@ const money = (v: number) =>
 export function Dashboard({
   userName,
   memberships: initial,
+  isPlatformAdmin = false,
 }: {
   userName: string;
   memberships: Membership[];
+  isPlatformAdmin?: boolean;
 }) {
   const router = useRouter();
   const [memberships, setMemberships] = useState(initial);
@@ -227,6 +229,14 @@ export function Dashboard({
             WORKSPACE
           </span>
         </Link>
+        {isPlatformAdmin && (
+          <Link
+            className="mx-5 mb-4 rounded border border-teal-700 p-3 text-teal-100"
+            href="/platform"
+          >
+            平台管理
+          </Link>
+        )}
         <div className="px-5">
           <label className="text-xs text-teal-100/60" htmlFor="tenant-switch">
             目前店家

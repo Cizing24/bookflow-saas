@@ -1,0 +1,31 @@
+# Existing managed PostgreSQL and HTTPS reverse proxy are required.
+services:
+  migrate:
+    image: bookflow-tools:${RELEASE_TAG:?Set RELEASE_TAG to the immutable commit hash}
+    build:
+      context: .
+      target: tools
+    env_file: .env.production
+    command: ["npm", "run", "db:migrate"]
+    restart: "no"
+  web:
+    image: bookflow:${RELEASE_TAG:?Set RELEASE_TAG to the immutable commit hash}
+    build:
+      context: .
+      target: runtime
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:3000:3000"
+    init: true
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  worker:
+    image: bookflow-tools:${RELEASE_TAG:?Set RELEASE_TAG to the immutable commit hash}
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+    command: ["npm", "run", "notifications:dispatch"]
+    profiles: ["worker"]
+    restart: "no"

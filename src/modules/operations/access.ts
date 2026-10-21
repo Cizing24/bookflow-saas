@@ -12,6 +12,8 @@ export async function access(
     include: { tenant: true },
   });
   if (!member) throw new AppError(403, "無此店家的存取權限");
+  if (!member.tenant.active)
+    throw new AppError(403, "店家已停用，請聯絡平台管理者");
   return member;
 }
 export type Access = Awaited<ReturnType<typeof access>>;
