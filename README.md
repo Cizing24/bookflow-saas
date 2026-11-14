@@ -8,6 +8,8 @@ Phase 4 補齊獨立平台管理、店家啟停、共享認證限流、輸入與
 
 Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。**沒有公開部署的 Demo URL**；本機 Demo 為 `http://localhost:3000/b/flow-studio`，依下方 Seed 建立。精確驗證與外部授權邊界見 [STATUS](docs/STATUS.md)。
 
+公開合成 Demo 的部署準備與限制見[部署說明](docs/deployment/DEMO_DEPLOYMENT.md)及[維運手冊](docs/deployment/DEMO_OPERATIONS.md)。公開模式禁止註冊、真實聯絡資料與 Email 派送；與本機開發 Seed 分開。
+
 ## 系統架構與資料模型
 
 ```mermaid

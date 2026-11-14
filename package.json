@@ -21,6 +21,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "demo:provision": "tsx scripts/provision-demo.ts",
     "db:local": "node scripts/local-db.mjs",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "setup:env": "node scripts/init-env.mjs",

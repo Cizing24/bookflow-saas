@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { db } from "@/lib/db";
 import type { Prisma, Booking } from "@/generated/prisma/client";
 import { withLockedTenant } from "@/modules/booking/repository";
+import { isPublicDemo } from "@/lib/demo";
 export interface EmailMessage {
   id: string;
   recipient: string;
@@ -24,6 +25,7 @@ export function emailProvider(): EmailProvider {
     };
   return {
     async send(message) {
+      if (isPublicDemo()) throw new Error("PUBLIC_DEMO_EMAIL_DISABLED");
       const endpoint = process.env.EMAIL_HTTP_URL;
       const key = process.env.EMAIL_HTTP_TOKEN;
       if (

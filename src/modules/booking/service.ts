@@ -13,6 +13,7 @@ import {
 } from "./repository";
 import { AppError } from "@/modules/shared/errors";
 import { bookingSchema } from "@/modules/shared/schemas";
+import { assertDemoContact, isPublicDemo } from "@/lib/demo";
 type Context = Awaited<ReturnType<typeof schedulingContext>>;
 export async function slotsFor(
   tenant: Context,
@@ -97,6 +98,7 @@ export async function availableDates(
 }
 export async function createBooking(slug: string, input: unknown) {
   const data = bookingSchema.parse(input);
+  assertDemoContact(data);
   const tenant = await publicTenant(slug);
   if (!tenant) throw new AppError(404, "找不到店家");
   const { idempotencyKey, ...payload } = data;
@@ -126,6 +128,14 @@ export async function createBooking(slug: string, input: unknown) {
         }
       }
       const context = await schedulingContext(tenant.id, tx);
+      if (
+        isPublicDemo() &&
+        (await tx.booking.count({ where: { tenantId: tenant.id } })) >= 1000
+      )
+        throw new AppError(
+          429,
+          "Demo 已達合成預約上限，請稍後由操作者更新展示資料集。",
+        );
       const start = DateTime.fromISO(data.startAt).setZone(context.timezone);
       const slots = await slotsFor(
         context,
