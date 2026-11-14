@@ -1,6 +1,6 @@
 # BookFlow 公開 Demo 部署
 
-狀態：部署準備中，尚無已驗收的公開 URL。2026-11-14；分支 `codex/demo-deployment-2026-11-14`。
+狀態：2026-11-15 已發布公開合成 Demo：[預約入口](https://bookflow-live-demo.vercel.app/b/flow-studio)。分支 `codex/demo-deployment-2026-11-14`；已部署應用 SHA `953a4942882db48fa5fecaaabf75776853e8ff52`，驗收程式 SHA `1503a4684f2bcced527431b2a3e7018b0d6b59bb`。精確 deployment 與外網證據見 [VALIDATION](VALIDATION.md)。
 
 拓撲為 Vercel Hobby Next.js App Router + 獨立 Neon Free PostgreSQL 18 Demo branch。保留 Prisma 7 `pg` adapter 與既有 Better Auth，不切換 Auth 服務。`vercel.json` 使用 Singapore `sin1`，由獨立 Demo 專案發布，不能綁到既有 booking-system 或 Portfolio 專案。
 

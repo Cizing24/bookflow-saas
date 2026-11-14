@@ -6,7 +6,7 @@
 
 Phase 4 補齊獨立平台管理、店家啟停、共享認證限流、輸入與 HTTP 安全邊界、鍵盤焦點、Docker／CI 與部署回滾文件。訂閱金流及完整帳號營運仍在產品範圍之外。介面為臺灣繁體中文，價格幣別為新臺幣。
 
-Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。**沒有公開部署的 Demo URL**；本機 Demo 為 `http://localhost:3000/b/flow-studio`，依下方 Seed 建立。精確驗證與外部授權邊界見 [STATUS](docs/STATUS.md)。
+Repository：[Cizing24/bookflow-saas](https://github.com/Cizing24/bookflow-saas)。[Live Demo：合成預約](https://bookflow-live-demo.vercel.app/b/flow-studio) 已於 2026-11-15 上線；只接受固定合成聯絡資料，不寄信、不收費，請保存私人管理連結以測試改期／取消。免費平台首次開啟可能需要啟動時間。店家管理身分由操作者私下提供。本機 Demo 為 `http://localhost:3000/b/flow-studio`，依下方 Seed 建立。精確驗證見 [Demo 驗收](docs/deployment/VALIDATION.md)與 [STATUS](docs/STATUS.md)。
 
 公開合成 Demo 的部署準備與限制見[部署說明](docs/deployment/DEMO_DEPLOYMENT.md)及[維運手冊](docs/deployment/DEMO_OPERATIONS.md)。公開模式禁止註冊、真實聯絡資料與 Email 派送；與本機開發 Seed 分開。
 
