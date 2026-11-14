@@ -9,6 +9,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { syntheticContact } from "@/lib/demo";
 type Tenant = {
   name: string;
   slug: string;
@@ -22,7 +23,13 @@ type Tenant = {
   maxAdvanceDays: number;
   staff: { id: string; name: string; services: { serviceId: string }[] }[];
 };
-export function BookingForm({ tenant }: { tenant: Tenant }) {
+export function BookingForm({
+  tenant,
+  demoMode = false,
+}: {
+  tenant: Tenant;
+  demoMode?: boolean;
+}) {
   const hydrated = useHydrated();
   const [serviceId, setServiceId] = useState(tenant.services[0]?.id ?? "");
   const [staffId, setStaffId] = useState(
@@ -143,6 +150,15 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
           MAKE TIME FOR YOURSELF
         </p>
         <h1 className="mt-4 text-3xl font-bold lg:text-4xl">{tenant.name}</h1>
+        {demoMode && (
+          <p
+            role="note"
+            className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm leading-6"
+          >
+            公開合成
+            Demo：請勿填寫真實資料。聯絡資訊已固定為測試值；預約會寫入展示資料庫，沒有真實服務、收費或寄信。請保存本次私人管理連結，不要分享。
+          </p>
+        )}
         <p className="mt-3 flex items-center gap-2 text-sm text-slate-500">
           <MapPin size={15} />
           {tenant.timezone} <span className="mx-1">·</span>{" "}
@@ -182,7 +198,9 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
               </p>
             </div>
             <p className="mb-6 text-xs leading-6 text-slate-500">
-              請保存私人管理連結。通知會排入寄送工作；若未收到信，仍可使用此連結，或聯絡店家。
+              {demoMode
+                ? "此 Demo 不寄送 Email。請保存私人管理連結，以測試取消與改期；連結僅授權存取這筆合成預約。"
+                : "請保存私人管理連結。通知會排入寄送工作；若未收到信，仍可使用此連結，或聯絡店家。"}
             </p>
             {result.managementToken && (
               <a
@@ -356,9 +374,13 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                       姓名
                       <Input
                         name="name"
+                        defaultValue={
+                          demoMode ? syntheticContact.name : undefined
+                        }
+                        readOnly={demoMode}
                         required
                         maxLength={80}
-                        autoComplete="name"
+                        autoComplete={demoMode ? "off" : "name"}
                         placeholder="如何稱呼你"
                       />
                     </label>
@@ -367,9 +389,13 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                         Email
                         <Input
                           name="email"
+                          defaultValue={
+                            demoMode ? syntheticContact.email : undefined
+                          }
+                          readOnly={demoMode}
                           required
                           type="email"
-                          autoComplete="email"
+                          autoComplete={demoMode ? "off" : "email"}
                           maxLength={254}
                         />
                       </label>
@@ -377,6 +403,10 @@ export function BookingForm({ tenant }: { tenant: Tenant }) {
                         聯絡電話
                         <Input
                           name="phone"
+                          defaultValue={
+                            demoMode ? syntheticContact.phone : undefined
+                          }
+                          readOnly={demoMode}
                           required
                           type="tel"
                           autoComplete="tel"
