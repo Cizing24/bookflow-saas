@@ -56,6 +56,18 @@ AST 不能代替 SQL、交易語意或執行期權限驗證；未將整份 graph
 - 本次未重跑全部 E2E、Production Build、Docker、備份還原或完整 audit；歷史證據保留於 [STATUS](STATUS.md)，不混寫為本次結果。
 - 本次沒有新增雙語文件。既有產品與 README 為繁體中文，English 技術術語與路徑保留。
 
+## 遠端 CI 與相依風險
+
+[PR #4 的 CI run 44795956224](https://github.com/Cizing24/bookflow-saas/actions/runs/44795956224)，程式與媒體提交 `8f022a11c13852da26abf6c654ddd5fe01679b3a`：
+
+- 成功：乾淨安裝、Prisma 生成、六個 migrations、schema diff、Seed、Lint、Typecheck、Format、Unit 30、Migration 重建及 Integration 28。
+- 失敗：`npm audit --omit=dev` 回報 4 vulnerabilities（1 moderate、3 high）。Next.js 16.4.2 被列為 moderate；`effect → @prisma/config → prisma` 相依鏈列為 high，三筆並非三個獨立根因。
+- `effect` 公告為 [GHSA-7589-6fvf-x4pw](https://github.com/advisories/GHSA-7589-6fvf-x4pw)。Next.js 公告與套件適用版本以該 run 的 audit 原始輸出為準；套件被標記不等於已證明本系統所有路由皆可被利用。
+- 後續 Production Build、Chromium E2E、Docker 建置及容器 smoke 被安全 gate 跳過；不能將歷史成功套用為本次通過。
+- 本次僅文件／素材變更，未變動 package-lock、依賴或 workflow。沒有使用 `audit fix --force`（其建議包含 Prisma major 降版），也沒有忽略安全檢查。相依修補與回歸驗證仍待後續處理。
+
+後續文件提交僅補記上述證據；應以 PR 的最新 check 為準，不以舊 run 當作新 SHA 的綠燈。
+
 ## 文案與保留資訊
 
 依 speak-human-tw 進行繁體中文潤飾：以具體流程取代口號，分開本次結果與歷史驗收，保留角色、資料隔離、寄送語意及容量限制。依使用者直接完成的授權套用，不另外逐段確認。

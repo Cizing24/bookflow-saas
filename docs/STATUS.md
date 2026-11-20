@@ -1,5 +1,11 @@
 # Phase 4 — Production Readiness & Portfolio Delivery
 
+## GitHub 展示驗證（2026-11-21）
+
+README 與真實操作素材的本次驗證見 [SHOWCASE_VALIDATION](SHOWCASE_VALIDATION.md)。本機 Unit 30／Integration 28 通過；[PR #4 CI run 44795956224](https://github.com/Cizing24/bookflow-saas/actions/runs/44795956224) 的 Lint／Typecheck／Format／Unit／Migration／Integration 通過，但 `npm audit --omit=dev` 回報 4 個既有相依風險（1 moderate、3 high），因此 Build／E2E／Docker 未執行。依賴未在此文件工作中變更。
+
+下方 2026-10-22 的 audit 0 與完整 CI 是歷史證據，不能視為當前相依安全狀態或本次全數通過。本次沒有部署或修改公開服務。
+
 ## 最終整合（2026-10-22）
 
 PR [#1](https://github.com/Cizing24/bookflow-saas/pull/1) 整合 Phase 4 至 main。起始 main 為 `8f3d2b5b93e011f11a54f62e3acc36b06d31e55f`，Phase 3 為 `911dad5`，Phase 4 為 `e87d474deb5c6be853122ba92905c03aa2ea8ca4`；前兩者皆為 Phase 4 ancestor，前四個 Migration 原文保留。起始工作樹乾淨，PR 無衝突，[原 head PR CI](https://github.com/Cizing24/bookflow-saas/actions/runs/39653021045) 全部成功。
