@@ -2,6 +2,12 @@
 
 最終整合沿用下列架構，不新增商業功能或重寫模組；版本與驗收規則見 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
 
+## 實作核對（2026-11-21）
+
+本次以 graphify 的程式 AST 關係與逐檔來源核對目前 main 的模組邊界，詳細來源對照見 [SHOWCASE_VALIDATION](SHOWCASE_VALIDATION.md#架構核對)。SQL 約束與 Worker 語意另讀 migrations／實作確認；AST 本身不驗證資料庫行為。
+
+公開預約、店家管理、顧客自助與平台管理共用同一個 Next.js 部署單元。Better Auth 提供 Session；Membership 與獨立 PlatformAdmin 決定應用權限。所有業務資料由 Prisma 連至同一 PostgreSQL；通知 Outbox 亦在此資料庫，CLI Worker 領取工作後呼叫可設定的 Email Gateway。正式派送需外部排程，本機 Preview 不會寄出郵件。
+
 ## Phase 4 增量
 
 - 新增 `modules/platform`、`/platform` 與 `/api/platform`。獨立 PlatformAdmin 授權，不擴張 Membership Role；平台基本資料投影、25 店／頁、Repeatable Read 統計快照、最近 50 稽核。
