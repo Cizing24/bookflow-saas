@@ -100,7 +100,7 @@ Preview 或 HTTPS Provider]
 
 上述完整驗收是具日期與提交的歷史證據；本次不宣稱已重跑全部測試，也不將裝置模擬當成真機或 Safari 驗證。
 
-本次 [PR CI](https://github.com/Cizing24/bookflow-saas/actions/runs/44795956224) 的 Lint、Typecheck、Format、Unit 30、Integration 28 與 Migration 重建通過；`npm audit --omit=dev` 因既有鎖檔的 4 個相依風險失敗（1 moderate、3 high），後續 Build、E2E 與 Docker 檢查未執行。這不是完整綠燈，修補範圍與限制見[本次驗證報告](docs/SHOWCASE_VALIDATION.md#遠端-ci-與相依風險)。
+2026-11-21 的[安全修復 CI](https://github.com/Cizing24/bookflow-saas/actions/runs/44802071154) 已通過 Lint、Typecheck、Format、Unit 30、Integration 28、六個 Migration 重建、Production Build、完整 Chromium E2E 15，以及 Docker tools／runtime 與容器 smoke。正式相依 audit 從 4 降至 0，完整 audit 從 11 降至 0；版本取捨與精確驗證範圍見[安全維護紀錄](docs/SECURITY_MAINTENANCE_2026-11-21.md)。
 
 ## 技術組成
 

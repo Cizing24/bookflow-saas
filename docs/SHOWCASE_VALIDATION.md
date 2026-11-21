@@ -1,5 +1,7 @@
 # BookFlow GitHub 展示驗證
 
+後續安全驗收：原展示提交的 audit 失敗已由[安全 PR #5](https://github.com/Cizing24/bookflow-saas/pull/5) 修復；完整與正式相依 audit 皆為 0。Production Build、15 項完整 Chromium E2E、Docker tools／runtime 與容器 smoke 已由[安全 CI](https://github.com/Cizing24/bookflow-saas/actions/runs/44802071154) 實際通過。下方錄製初驗與失敗紀錄保留為歷史；詳見[安全維護紀錄](SECURITY_MAINTENANCE_2026-11-21.md)。
+
 日期：2026-11-21（Asia/Taipei）。本次只整理 README、架構說明與展示素材，不修改產品行為。
 
 ## 基準與既有成果
@@ -64,7 +66,7 @@ AST 不能代替 SQL、交易語意或執行期權限驗證；未將整份 graph
 - 失敗：`npm audit --omit=dev` 回報 4 vulnerabilities（1 moderate、3 high）。Next.js 16.4.2 被列為 moderate；`effect → @prisma/config → prisma` 相依鏈列為 high，三筆並非三個獨立根因。
 - `effect` 公告為 [GHSA-7589-6fvf-x4pw](https://github.com/advisories/GHSA-7589-6fvf-x4pw)。Next.js 公告與套件適用版本以該 run 的 audit 原始輸出為準；套件被標記不等於已證明本系統所有路由皆可被利用。
 - 後續 Production Build、Chromium E2E、Docker 建置及容器 smoke 被安全 gate 跳過；不能將歷史成功套用為本次通過。
-- 本次僅文件／素材變更，未變動 package-lock、依賴或 workflow。沒有使用 `audit fix --force`（其建議包含 Prisma major 降版），也沒有忽略安全檢查。相依修補與回歸驗證仍待後續處理。
+- 原展示提交僅修改文件／素材，未變動 package-lock、依賴或 workflow。後續由獨立安全 PR #5 修補與完整回歸驗證，沒有使用 `audit fix --force`、Prisma major 降版或忽略安全檢查。
 
 後續文件提交僅補記上述證據；應以 PR 的最新 check 為準，不以舊 run 當作新 SHA 的綠燈。
 

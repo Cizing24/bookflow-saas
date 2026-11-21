@@ -1,5 +1,11 @@
 # Phase 4 — Production Readiness & Portfolio Delivery
 
+## 安全修復與整合（2026-11-21）
+
+[安全 PR #5](https://github.com/Cizing24/bookflow-saas/pull/5) 將 Next.js／eslint-config-next 更新至 16.4.6，限定 Prisma config 的 effect 為 3.22.1，並相容更新 lint 工具鏈；Prisma 7.10.1 與產品業務程式不變。正式相依 audit 4 → 0，完整 audit 11 → 0。[完整 CI 44802071154](https://github.com/Cizing24/bookflow-saas/actions/runs/44802071154) 的 Unit 30、Integration 28、六個 Migration、Production Build、Chromium E2E 15、Docker tools／runtime、容器 Migration／health／Session smoke 均通過。版本、來源與限制見 [安全維護紀錄](SECURITY_MAINTENANCE_2026-11-21.md)。
+
+下列展示初驗的 audit 失敗已由安全修復處理；歷史紀錄保留，不作為現行未解決風險。沒有合併部署 PR #3 或部署正式環境。
+
 ## GitHub 展示驗證（2026-11-21）
 
 README 與真實操作素材的本次驗證見 [SHOWCASE_VALIDATION](SHOWCASE_VALIDATION.md)。本機 Unit 30／Integration 28 通過；[PR #4 CI run 44795956224](https://github.com/Cizing24/bookflow-saas/actions/runs/44795956224) 的 Lint／Typecheck／Format／Unit／Migration／Integration 通過，但 `npm audit --omit=dev` 回報 4 個既有相依風險（1 moderate、3 high），因此 Build／E2E／Docker 未執行。依賴未在此文件工作中變更。
